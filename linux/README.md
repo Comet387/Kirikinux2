@@ -1,0 +1,37 @@
+# Kirikiroid2 Linux host
+
+This directory provides a small native Linux host for the Kirikiroid2 core. It
+uses X11 first and SDL2 as a fallback. Both backends are optional at configure
+time, so the host can still be built in a minimal CI/container image and used
+for archive/path probing (`--probe`) or engine bring-up (`--no-window`). No
+Android runtime or Waydroid is required.
+
+## Build
+
+```sh
+cmake -S linux -B build-linux -DCMAKE_BUILD_TYPE=Release
+cmake --build build-linux
+```
+
+Install the development package for either Xlib (`libx11-dev`) or SDL2
+(`libsdl2-dev`) to obtain a window. X11 is selected when both are present.
+
+```sh
+./build-linux/kirikiroid2-linux --probe game.xp3
+./build-linux/kirikiroid2-linux --no-window game-directory
+./build-linux/kirikiroid2-linux game.xp3
+```
+
+The host validates the XP3 magic (`XP3\\r\\n \\n\\x1a\\x8b\\x67\\x01`) before entering the
+event loop. Actual script/render/audio execution remains in the Kirikiri core;
+an engine shared object can be supplied with `--engine`. The optional bridge
+exports two C symbols:
+
+```c
+void krkr2_linux_tick(double seconds);
+void krkr2_linux_shutdown(void);
+```
+
+This keeps platform/window code independent from the Cocos2d Android frontend
+and gives a future full core port a stable place to attach initialization.
+
