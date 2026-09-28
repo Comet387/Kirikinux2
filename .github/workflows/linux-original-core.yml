@@ -1,0 +1,56 @@
+name: Linux original core
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  components:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools and real GTK headers for component regression
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build pkg-config libgtk-3-dev
+      - run: ./scripts/linux/check-components.sh
+      - name: Compile and link GTK dialogs and original drawing components
+        run: |
+          cmake -S tests/linux -B build-components -G Ninja -DKR2_COMPONENT_SANITIZERS=OFF
+          cmake --build build-components --parallel 2
+          ctest --test-dir build-components --output-on-failure
+  original-core:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install desktop and codec development dependencies
+        run: ./scripts/linux/install-deps-debian.sh
+      - name: Build original core, plugins and Cocos UI resources
+        run: ./scripts/linux/build.sh -DCMAKE_BUILD_TYPE=Release
+        env:
+          KR2_BUILD_JOBS: 2
+      - name: Install assembled desktop tree
+        run: cmake --install build-linux --prefix "$PWD/install-linux"
+      - name: Fetch fixed external XP3 test input
+        run: |
+          mkdir -p external-test
+          curl -fL --retry 3 https://raw.githubusercontent.com/weimingtom/kirikiroid2_fork3/9f84364f47215ce9d352a1029879fdeca14f2653/_testdata/data.xp3 -o external-test/data.xp3
+          echo '15f008b19fbd10d08002c8419670c0d7c98d03958047f2ded9dc3f1e8c58b02b  external-test/data.xp3' | sha256sum -c -
+      - name: Run original engine and advance the real game
+        run: |
+          # A clean save directory plays the original ~111-second opening.
+          # Extended transitions are provided by the original extrans plugin.
+          python3 scripts/linux/gui-smoke.py --engine build-linux/bin/kirikiroid2 --game external-test/data.xp3 --output gui-smoke --seconds 180 --capture-at 24 --capture-at 48 --action click:10:450:235 --action focus:150 --action key:154:space --action key:158:Return --action click:162:800:650 --require-log 'Scenario loaded : ch2004.ks' --require-log 'Startup script ended.' --require-log 'returned to : *ch01 line offset 11' --forbid-log 'Cannot find transition handler' --forbid-log 'Cannot find transition hander'
+          python3 scripts/linux/check-frame-region.py --report gui-smoke/report.json --reference frame-151.0.png --after 151 --region 160:0:1120:400 --output gui-smoke/background-region.json
+        env:
+          LIBGL_ALWAYS_SOFTWARE: 1
+          ALSOFT_DRIVERS: "null"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-core-gui-evidence
+          path: gui-smoke/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-core-linux
+          path: install-linux/

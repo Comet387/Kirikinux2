@@ -328,9 +328,9 @@ bool TVP_stat(const tjs_char *name, tTVP_stat &s) {
 	bool ret = !_wstat64(name, &t);
 	s.st_mode = t.st_mode;
 	s.st_size = t.st_size;
-	s.st_atime = t.st_atime;
-	s.st_mtime = t.st_mtime;
-	s.st_ctime = t.st_ctime;
+	s.atime_seconds = t.st_atime;
+	s.mtime_seconds = t.st_mtime;
+	s.ctime_seconds = t.st_ctime;
 	return ret;
 }
 

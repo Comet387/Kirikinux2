@@ -1,4 +1,5 @@
 #pragma once
+#include <stddef.h>
 #include <functional>
 
 // from https://bitbucket.org/wolfpld/etcpak.git

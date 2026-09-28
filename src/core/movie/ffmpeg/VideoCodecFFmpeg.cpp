@@ -859,7 +859,7 @@ bool CDVDVideoCodecFFmpeg::GetPictureCommon(DVDVideoPicture* pDvdVideoPicture)
   else
     pDvdVideoPicture->color_range = 0;
 
-  int qscale_type;
+  int qscale_type = -1; // no qp table: av_frame_get_qp_table leaves type untouched
   pDvdVideoPicture->qp_table = av_frame_get_qp_table(m_pFrame, &pDvdVideoPicture->qstride, &qscale_type);
 
   switch (qscale_type)

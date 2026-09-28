@@ -1,5 +1,6 @@
 #pragma once
 #include <utility>
+#include <string>
 #include <vector>
 #include "Geometry.h"
 #include "RenderFormats.h"

@@ -1,4 +1,5 @@
 #include "CustomFileUtils.h"
+#include <limits>
 #if CC_TARGET_PLATFORM == CC_PLATFORM_WIN32
 #include "platform/win32/CCFileUtils-win32.h"
 #elif CC_TARGET_PLATFORM == CC_PLATFORM_IOS
@@ -6,6 +7,8 @@
 #import "platform/apple/CCFileUtils-apple.h"
 #elif CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID
 #include "platform/android/CCFileUtils-android.h"
+#elif CC_TARGET_PLATFORM == CC_PLATFORM_LINUX // [kirikinux2]
+#include "platform/linux/CCFileUtils-linux.h"
 #endif
 #ifdef MINIZIP_FROM_SYSTEM
 #include <minizip/unzip.h>
@@ -14,6 +17,15 @@
 #endif
 #include "ConfigManager/LocaleConfigManager.h"
 
+// [kirikinux2] cocos2d-x >= 3.15 made the FileUtils readers const and routes all of them
+// through getContents(); the engine build Kirikiroid2 was written for still had the old
+// non-const virtuals.  Keep the old overrides for that engine, add getContents() here.
+#if COCOS2D_VERSION >= 0x00031500
+#define KR2_FILEUTILS_GETCONTENTS 1
+#define KR2_FILEUTILS_LEGACY_OVERRIDE
+#else
+#define KR2_FILEUTILS_LEGACY_OVERRIDE override
+#endif
 NS_CC_BEGIN
 
 typedef
@@ -23,6 +35,8 @@ FileUtilsWin32
 FileUtilsApple
 #elif CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID
 FileUtilsAndroid
+#elif CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+FileUtilsLinux
 #endif
 FileUtilsInherit;
 
@@ -33,11 +47,15 @@ public:
 
 	void addAutoSearchArchive(const std::string& path);
 	virtual std::string fullPathForFilename(const std::string &filename) const override;
-	virtual std::string getStringFromFile(const std::string& filename) override;
-	virtual Data getDataFromFile(const std::string& filename) override;
-	virtual unsigned char* getFileData(const std::string& filename, const char* mode, ssize_t *size) override;
+	virtual std::string getStringFromFile(const std::string& filename) KR2_FILEUTILS_LEGACY_OVERRIDE;
+	virtual Data getDataFromFile(const std::string& filename) KR2_FILEUTILS_LEGACY_OVERRIDE;
+	virtual unsigned char* getFileData(const std::string& filename, const char* mode, ssize_t *size) KR2_FILEUTILS_LEGACY_OVERRIDE;
 	virtual bool isFileExistInternal(const std::string& strFilePath) const override;
 	virtual bool isDirectoryExistInternal(const std::string& dirPath) const override;
+#ifdef KR2_FILEUTILS_GETCONTENTS
+	using FileUtilsInherit::getContents;
+	virtual Status getContents(const std::string& filename, ResizableBuffer* buffer) const override;
+#endif
 	virtual bool init() override {
 		return FileUtilsInherit::init();
 	}
@@ -110,14 +128,21 @@ unsigned char* CustomFileUtils::getFileDataFromArchive(const std::string& filena
 {
 	auto it = _autoSearchArchive.find(filename);
 	if (_autoSearchArchive.end() != it) {
-		_lock.lock();
+		std::lock_guard<std::mutex> lock(_lock);
 		if (unzGoToFilePos(it->second.first, &it->second.second) != UNZ_OK) return nullptr;
 		unz_file_info fileInfo;
 		if (unzGetCurrentFileInfo(it->second.first, &fileInfo, NULL, 0, NULL, 0, NULL, 0) != UNZ_OK) return nullptr;
-		unsigned char *buffer = (unsigned char*)malloc(fileInfo.uncompressed_size);
+		// The stock Cocos reader needs an explicit open/close for each entry.
+		if (fileInfo.uncompressed_size > static_cast<unsigned long>(std::numeric_limits<int>::max())) return nullptr;
+		if (unzOpenCurrentFile(it->second.first) != UNZ_OK) return nullptr;
+		unsigned char *buffer = (unsigned char*)malloc(fileInfo.uncompressed_size ? fileInfo.uncompressed_size : 1);
+		if (!buffer) { unzCloseCurrentFile(it->second.first); return nullptr; }
 		int readedSize = unzReadCurrentFile(it->second.first, buffer, static_cast<unsigned>(fileInfo.uncompressed_size));
-		_lock.unlock();
-		CCASSERT(readedSize == 0 || readedSize == (int)fileInfo.uncompressed_size, "the file size is wrong");
+		int closeResult = unzCloseCurrentFile(it->second.first);
+		if (readedSize != (int)fileInfo.uncompressed_size || closeResult != UNZ_OK) {
+			free(buffer);
+			return nullptr;
+		}
 		*size = fileInfo.uncompressed_size;
 		return buffer;
 	}
@@ -145,6 +170,22 @@ std::string CustomFileUtils::getStringFromFile(const std::string& filename)
 	std::string ret((const char*)data.getBytes());
 	return ret;
 }
+
+#ifdef KR2_FILEUTILS_GETCONTENTS
+// [kirikinux2] every reader of cocos2d-x >= 3.15 ends up here, so skin archives keep working
+FileUtils::Status CustomFileUtils::getContents(const std::string& filename, ResizableBuffer* buffer) const
+{
+	ssize_t size = 0;
+	unsigned char *data = const_cast<CustomFileUtils*>(this)->getFileDataFromArchive(filename, &size);
+	if (data) {
+		buffer->resize(size);
+		if (size > 0) memcpy(buffer->buffer(), data, size);
+		free(data);
+		return Status::OK;
+	}
+	return FileUtilsInherit::getContents(filename, buffer);
+}
+#endif
 
 NS_CC_END
 

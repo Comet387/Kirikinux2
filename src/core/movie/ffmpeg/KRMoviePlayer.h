@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #define NOMINMAX
 #include "VideoPlayer.h"
 #include "krmovie.h"

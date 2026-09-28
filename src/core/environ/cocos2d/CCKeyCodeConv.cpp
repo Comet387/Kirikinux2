@@ -71,6 +71,8 @@ int TVPConvertKeyCodeToVKCode(cocos2d::EventKeyboard::KeyCode keyCode)
 		CASE(ESCAPE);
 	case cocos2d::EventKeyboard::KeyCode::KEY_BACK_TAB:
 		CASE(TAB);
+	// Desktop GLFW sends KEY_ENTER; mobile backends also use KEY_RETURN.
+	case cocos2d::EventKeyboard::KeyCode::KEY_ENTER:
 		CASE(RETURN);
 	case cocos2d::EventKeyboard::KeyCode::KEY_SCROLL_LOCK:	return VK_SCROLL;
 	case cocos2d::EventKeyboard::KeyCode::KEY_SYSREQ:	return VK_SNAPSHOT;
@@ -182,7 +184,6 @@ int TVPConvertKeyCodeToVKCode(cocos2d::EventKeyboard::KeyCode keyCode)
 	case cocos2d::EventKeyboard::KeyCode::KEY_DPAD_UP:
 	case cocos2d::EventKeyboard::KeyCode::KEY_DPAD_DOWN:
 	case cocos2d::EventKeyboard::KeyCode::KEY_DPAD_CENTER:
-	case cocos2d::EventKeyboard::KeyCode::KEY_ENTER:
 	default: return 0;
 	}
 #undef CASE

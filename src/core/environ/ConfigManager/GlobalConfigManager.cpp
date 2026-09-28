@@ -6,19 +6,16 @@
 #include "LocaleConfigManager.h"
 
 bool TVPWriteDataToFile(const ttstr &filepath, const void *data, unsigned int len);
+// [kirikinux2] The original overrode XMLPrinter::Print(), which is only virtual in the
+// tinyxml2 bundled with zeas2's private cocos2d-x; newer tinyxml2 also writes through
+// Write()/Putc(), so the preferences were silently lost (Yuri's "global preference can
+// not save").  Without a FILE*, XMLPrinter buffers the whole document itself.
 class XMLMemPrinter : public tinyxml2::XMLPrinter {
-	tTVPMemoryStream _stream;
-	char _buffer[4096];
 public:
-	virtual void Print(const char* format, ...) override {
-		va_list param;
-		va_start(param, format);
-		int n = vsnprintf(_buffer, 4096, format, param);
-		va_end(param);
-		_stream.Write(_buffer, n);
-	}
 	void SaveFile(const std::string &path) {
-		if (!TVPWriteDataToFile(path, _stream.GetInternalBuffer(), _stream.GetSize())) {
+		int len = CStrSize();
+		if (len > 0) --len; // CStrSize() counts the terminating NUL
+		if (!TVPWriteDataToFile(path, CStr(), len)) {
 			TVPShowSimpleMessageBox(
 				LocaleConfigManager::GetInstance()->GetText("cannot_create_preference"),
 				LocaleConfigManager::GetInstance()->GetText("readonly_storage"));

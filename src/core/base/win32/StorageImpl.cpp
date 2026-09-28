@@ -169,9 +169,9 @@ void TVPGetLocalFileListAt(const ttstr &name, const std::function<void(const tts
 			info.NativeName = direntp->d_name;
 			info.Mode = stat_buf.st_mode;
 			info.Size = stat_buf.st_size;
-			info.AccessTime = stat_buf.st_atime;
-			info.ModifyTime = stat_buf.st_mtime;
-			info.CreationTime = stat_buf.st_ctime;
+			info.AccessTime = stat_buf.atime_seconds;
+			info.ModifyTime = stat_buf.mtime_seconds;
+			info.CreationTime = stat_buf.ctime_seconds;
 			cb(file, &info);
 		}
 		closedir(dirp);

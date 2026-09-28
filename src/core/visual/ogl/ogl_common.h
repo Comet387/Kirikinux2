@@ -1,9 +1,12 @@
 #pragma once
-#ifdef WIN32 
+#if defined(WIN32) || defined(LINUX) // [kirikinux2] Linux desktop uses GLEW like win32
 #if defined(_M_X64)
 #define GLEW_STATIC
 #endif
 #include "GL/glew.h"
+#ifndef EGLAPIENTRY // [kirikinux2] named by a typedef in RenderManager_ogl.cpp
+#define EGLAPIENTRY
+#endif
 #else
 #ifndef GL_UNPACK_ROW_LENGTH
 #define GL_UNPACK_ROW_LENGTH 0x0CF2

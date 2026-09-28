@@ -879,9 +879,9 @@ bool TVP_stat(const char *name, tTVP_stat &s) {
 	bool ret = !stat(name, &t);
 	s.st_mode = t.st_mode;
 	s.st_size = t.st_size;
-	s.st_atime = t.st_atim.tv_sec;
-	s.st_mtime = t.st_mtim.tv_sec;
-	s.st_ctime = t.st_ctim.tv_sec;
+	s.atime_seconds = t.st_atim.tv_sec;
+	s.mtime_seconds = t.st_mtim.tv_sec;
+	s.ctime_seconds = t.st_ctim.tv_sec;
 	return ret;
 }
 

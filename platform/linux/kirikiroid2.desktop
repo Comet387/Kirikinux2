@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Kirikiroid2
+Comment=KiriKiri2/KiriKiriZ visual novel player (Linux build of Kirikiroid2)
+Exec=kirikiroid2 %f
+Icon=kirikiroid2
+Terminal=false
+Categories=Game;
+MimeType=inode/directory;

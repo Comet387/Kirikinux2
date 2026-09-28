@@ -50,7 +50,9 @@ static tTJSCriticalSection _NoMemCallBackCS;
 static void *_reservedMem = malloc(1024 * 1024 * 4); // 4M reserved mem
 static bool _project_startup = false;
 tTJS *TVPAppScriptEngine;
+#ifndef KR2_NO_MALLOC_WRAP
 #define HOOK_MALLOC
+#endif
 
 static void _do_compact() {
 	TVPDeliverCompactEvent(TVP_COMPACT_LEVEL_MAX);

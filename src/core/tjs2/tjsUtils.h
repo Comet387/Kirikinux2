@@ -363,8 +363,10 @@ public:
 		_erase(firstIndex);
 		return Node.Data;
 	}
-	T& back() const { return PointerBuffPtr[lastIndex].Data; }
-	T& front() const { return PointerBuffPtr[firstIndex].Data; }
+	T& back() { return PointerBuffPtr[lastIndex].Data; }
+	const T& back() const { return PointerBuffPtr[lastIndex].Data; }
+	T& front() { return PointerBuffPtr[firstIndex].Data; }
+	const T& front() const { return PointerBuffPtr[firstIndex].Data; }
 	bool remove(T &arg) {
 		int i = _find(arg);
 		if (i != -1) {
@@ -401,15 +403,15 @@ public:
 	class iterator {
 		friend class tVectorList<T>;
 	private:
-		_tVectorList_Node** m_pNodeBuffer;
+		_tVectorList_Node* const* m_pNodeBuffer;
 		int index;
 
 	public:
 		iterator() :m_pNodeBuffer(0), index(-1){}
-		iterator(_tVectorList_Node** _p, int _index) :m_pNodeBuffer(_p), index(_index){}
+		iterator(_tVectorList_Node* const* _p, int _index) :m_pNodeBuffer(_p), index(_index){}
 
-		bool operator== (iterator rhs){ return m_pNodeBuffer == rhs.m_pNodeBuffer && index == rhs.index; }
-		bool operator!= (iterator rhs){ return m_pNodeBuffer != rhs.m_pNodeBuffer || index != rhs.index; }
+		bool operator== (iterator rhs) const { return m_pNodeBuffer == rhs.m_pNodeBuffer && index == rhs.index; }
+		bool operator!= (iterator rhs) const { return m_pNodeBuffer != rhs.m_pNodeBuffer || index != rhs.index; }
 		iterator&  operator++(){ // ++ prefix
 			if (!end()) {
 				index = (*m_pNodeBuffer)[index].nextIndex;
@@ -434,14 +436,14 @@ public:
 				index = (*m_pNodeBuffer)[index].prevIndex;
 			return ret;
 		}
-		T& operator*() {
+		T& operator*() const {
 #if (defined(WIN32) || defined(_WIN32)) && defined(_DEBUG)
 			if (end())
 				throw;
 #endif
 			return (*m_pNodeBuffer)[index].Data;
 		}
-		T* operator->() {
+		T* operator->() const {
 #if (defined(WIN32) || defined(_WIN32)) && defined(_DEBUG)
 			if (end())
 				throw;
@@ -449,14 +451,29 @@ public:
 			return &(*m_pNodeBuffer)[index].Data;
 		}
 		operator bool() { return !end(); }
-		bool end() { return index < 0; }
+		bool end() const { return index < 0; }
 	};
 	iterator begin() { return iterator(&PointerBuffPtr, firstIndex); }
 	iterator rbegin() { return iterator(&PointerBuffPtr, lastIndex); }
 	iterator end() { return iterator(&PointerBuffPtr, -1); }
 	iterator rend() { return iterator(&PointerBuffPtr, -1); }
 	iterator find(T &_Val) { return iterator(&PointerBuffPtr, _find(_Val)); }
-	typedef iterator const_iterator;
+	class const_iterator : private iterator {
+	public:
+		const_iterator() = default;
+		const_iterator(const iterator &it) : iterator(it) {}
+		const_iterator(_tVectorList_Node* const* p, int i) : iterator(p, i) {}
+		const T& operator*() const { return iterator::operator*(); }
+		const T* operator->() const { return iterator::operator->(); }
+		const_iterator& operator++() { iterator::operator++(); return *this; }
+		const_iterator operator++(int) { auto old = *this; ++*this; return old; }
+		const_iterator& operator--() { iterator::operator--(); return *this; }
+		const_iterator operator--(int) { auto old = *this; --*this; return old; }
+		bool operator==(const const_iterator& rhs) const { return iterator::operator==(rhs); }
+		bool operator!=(const const_iterator& rhs) const { return !(*this == rhs); }
+		bool end() const { return iterator::end(); }
+		operator bool() const { return !end(); }
+	};
 
 	const_iterator begin() const { return const_iterator(&PointerBuffPtr, firstIndex); }
 	const_iterator rbegin() const { return const_iterator(&PointerBuffPtr, lastIndex); }
@@ -469,6 +486,7 @@ public:
 			push_back(_Val);
 			return;
 		}
+		_ensureCapacity();
 		_tVectorList_Node &IteratorNode = PointerBuffPtr[it.index];
 		if (IteratorNode.prevIndex == -1) {
 			push_front(_Val);
@@ -482,8 +500,9 @@ public:
 		*  |__________|  |______|  |__________|
 		*/
 
-		_ensureCapacity();
-		int currentIndex = UnusedIndexStack.pop_back();
+		// [kirikinux2] std::vector::pop_back() returns void; take the index first
+		int currentIndex = UnusedIndexStack.back();
+		UnusedIndexStack.pop_back();
 		_tVectorList_Node &Node = PointerBuffPtr[currentIndex];
 		_tVectorList_Node &PrevNode = PointerBuffPtr[IteratorNode.prevIndex];
 		Node.Data = _Val;
@@ -499,6 +518,7 @@ public:
 			push_front(_Val);
 			return;
 		}
+		_ensureCapacity();
 		_tVectorList_Node &IteratorNode = PointerBuffPtr[it.index];
 		if (IteratorNode.nextIndex == -1) {
 			push_back(_Val);
@@ -512,8 +532,9 @@ public:
 		*  |__________|  |______|  |__________|
 		*/
 
-		_ensureCapacity();
-		int currentIndex = UnusedIndexStack.pop_back();
+		// [kirikinux2] std::vector::pop_back() returns void; take the index first
+		int currentIndex = UnusedIndexStack.back();
+		UnusedIndexStack.pop_back();
 		_tVectorList_Node &Node = PointerBuffPtr[currentIndex];
 		_tVectorList_Node &NextNode = PointerBuffPtr[IteratorNode.nextIndex];
 		Node.Data = _Val;

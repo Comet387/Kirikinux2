@@ -1,3 +1,5 @@
+> 历史诊断宿主记录。当前主移植路线已改为保留 Cocos2d、构建原版核心；见根目录 README.linux.md 和 docs/linux-port.md。这里的测试和阻塞点不代表完整引擎状态。
+
 # Kirikiroid2 native Linux target
 
 This directory is the first native desktop target for Kirikiroid2. It uses the

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 
 namespace krkr2 {
@@ -26,13 +27,17 @@ struct HostOptions {
   int height = 640;
   bool fullscreen = false;
   bool probe_only = false;
+  bool list_archive = false;
+  bool run_startup = false;
   bool no_window = false;
   std::string engine_library;
   std::string game;
+  std::optional<std::string> expression;
+  std::optional<std::string> script;
+  std::optional<std::string> cat_storage;
 };
 
 /** Run the native event loop. Returns a process exit status. */
 int run_host(const HostOptions &options);
 
 } // namespace krkr2
-

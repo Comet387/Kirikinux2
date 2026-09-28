@@ -136,7 +136,7 @@ static void SendDumps(std::string dumpdir, std::vector<std::string> allDumps, st
 			zip_fileinfo zi;
 			memset(&zi, 0, sizeof zi);
 
-			time_t _t = stat_buf.st_mtime;
+			time_t _t = stat_buf.mtime_seconds;
 			struct tm *time = localtime(&_t);
 			zi.tmz_date.tm_year = time->tm_year;
 			zi.tmz_date.tm_mon = time->tm_mon;

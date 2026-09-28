@@ -1,6 +1,7 @@
 #include "MainScene.h"
 #include "cocos2d.h"
 #include "cocos-ext.h"
+#include "ui/UIButton.h"
 #include "tjsCommHead.h"
 #include "StorageIntf.h"
 #include "EventIntf.h"

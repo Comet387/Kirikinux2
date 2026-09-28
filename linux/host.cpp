@@ -1,16 +1,22 @@
 #include "kirkr_host.h"
+#include "storage_root.h"
+#include "xp3_archive.h"
+#ifdef KRKR2_HAVE_TJS
+#include "tjs_runtime.h"
+#endif
 
 #include <algorithm>
-#include <array>
 #include <chrono>
 #include <cstring>
 #include <dlfcn.h>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <memory>
 #include <cerrno>
 #include <sys/stat.h>
 #include <thread>
+#include <vector>
 
 #ifdef KRKR2_HAVE_X11
 #include <X11/Xlib.h>
@@ -22,17 +28,6 @@
 
 namespace krkr2 {
 namespace {
-
-constexpr std::array<unsigned char, 11> kXp3Magic = {
-    {'X', 'P', '3', '\r', '\n', ' ', '\n', 0x1a, 0x8b, 0x67, 0x01}};
-
-bool has_magic(const std::string &path) {
-  std::ifstream in(path, std::ios::binary);
-  if (!in) return false;
-  std::array<unsigned char, 11> got{};
-  in.read(reinterpret_cast<char *>(got.data()), static_cast<std::streamsize>(got.size()));
-  return in.gcount() == static_cast<std::streamsize>(got.size()) && got == kXp3Magic;
-}
 
 struct Engine {
   using tick_fn = void (*)(double);
@@ -173,15 +168,98 @@ bool resolve_game(const std::string &path, GamePath &result, std::string &error)
   }
   result.is_directory = S_ISDIR(st.st_mode);
   result.root = path;
-  result.is_xp3 = !result.is_directory && has_magic(path);
-  if (!result.is_directory && !result.is_xp3) {
-    error = "file is not an XP3 archive (expected XP3 magic)";
-    return false;
+  if (!result.is_directory) {
+    Xp3Archive archive;
+    result.is_xp3 = archive.open(path, error);
+    if (!result.is_xp3) return false;
   }
   return true;
 }
 
 int run_host(const HostOptions &options) {
+  if (options.cat_storage) {
+    const std::size_t delimiter = options.cat_storage->find('>');
+    std::vector<std::uint8_t> data;
+    std::string error;
+    if (delimiter == std::string::npos) {
+      std::ifstream input(*options.cat_storage, std::ios::binary);
+      if (!input) error = "cannot open storage: " + *options.cat_storage;
+      else data.assign(std::istreambuf_iterator<char>(input),
+                       std::istreambuf_iterator<char>());
+    } else if (delimiter == 0 || delimiter + 1 == options.cat_storage->size()) {
+      error = "XP3 storage name must be ARCHIVE>ENTRY";
+    } else {
+      StorageRoot storage;
+      const std::string root = options.cat_storage->substr(0, delimiter);
+      const std::string entry = options.cat_storage->substr(delimiter + 1);
+      if (storage.open(root, error)) storage.read(entry, data, error);
+    }
+    if (!error.empty()) {
+      std::cerr << "kirikiroid2: " << error << '\n';
+      return 6;
+    }
+    std::cout.write(reinterpret_cast<const char *>(data.data()),
+                    static_cast<std::streamsize>(data.size()));
+    return std::cout ? 0 : 6;
+  }
+#ifdef KRKR2_HAVE_TJS
+  if (options.expression || options.script || options.run_startup) {
+    TjsRunResult result;
+    if (options.run_startup) {
+      if (options.game.empty()) {
+        std::cerr << "kirikiroid2: --run requires a game directory or XP3 archive\n";
+        return 64;
+      }
+      result = execute_tjs_startup(options.game);
+    } else if (options.script) {
+      const std::size_t delimiter = options.script->find('>');
+      if (delimiter == std::string::npos) {
+        result = execute_tjs_file(*options.script);
+      } else if (delimiter == 0 || delimiter + 1 == options.script->size()) {
+        result.error = "XP3 script name must be ARCHIVE>ENTRY";
+      } else {
+        const std::string archive_name = options.script->substr(0, delimiter);
+        const std::string entry_name = options.script->substr(delimiter + 1);
+        result = execute_tjs_storage(archive_name, entry_name);
+      }
+    } else {
+      result = evaluate_tjs(*options.expression);
+    }
+    if (!result.ok) {
+      std::cerr << "kirikiroid2: TJS2: " << result.error << '\n';
+      return 5;
+    }
+    if (result.has_value) std::cout << result.value << '\n';
+    if (options.run_startup)
+      std::cout << "kirikiroid2: startup script completed\n";
+    return 0;
+  }
+#else
+  if (options.expression || options.script || options.run_startup) {
+    std::cerr << "kirikiroid2: this build does not include the TJS2 interpreter\n";
+    return 5;
+  }
+#endif
+
+  if (options.list_archive) {
+    if (options.game.empty()) {
+      std::cerr << "kirikiroid2: --list requires an XP3 archive path\n";
+      return 64;
+    }
+    Xp3Archive archive;
+    std::string error;
+    if (!archive.open(options.game, error)) {
+      std::cerr << "kirikiroid2: " << error << '\n';
+      return 6;
+    }
+    for (const Xp3Entry &entry : archive.entries()) {
+      std::cout << entry.original_size << '\t' << entry.archive_size << '\t'
+                << ((entry.flags & (std::uint32_t{1} << 31)) ? "protected\t" : "-\t")
+                << entry.name << '\n';
+    }
+    return 0;
+  }
+
   GamePath game;
   std::string error;
   if (!options.game.empty() && !resolve_game(options.game, game, error)) {

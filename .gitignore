@@ -1,0 +1,15 @@
+/build/
+/build-*/
+/AppDir/
+/*.AppImage
+
+/third_party/cocos2d-x/
+/third_party/7zip/
+/third_party/unrar/
+/third_party/downloads/
+/third_party/install/
+/third_party/ffmpeg-*/
+**/__pycache__/
+
+/install-linux/
+/third_party/p7zip_16.02/

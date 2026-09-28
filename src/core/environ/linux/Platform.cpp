@@ -9,6 +9,17 @@
 
 void TVPGetMemoryInfo(TVPMemoryInfo &m)
 {
+    m = TVPMemoryInfo{};
+    struct sysinfo info;
+    if (sysinfo(&info) == 0) {
+        const unsigned long long unit = info.mem_unit;
+        m.MemTotal = (unsigned long)(info.totalram * unit / 1024);
+        m.MemFree = (unsigned long)(info.freeram * unit / 1024);
+        m.SwapTotal = (unsigned long)(info.totalswap * unit / 1024);
+        m.SwapFree = (unsigned long)(info.freeswap * unit / 1024);
+        m.VirtualTotal = m.MemTotal + m.SwapTotal;
+        m.VirtualUsed = m.VirtualTotal - m.MemFree - m.SwapFree;
+    }
     /* to read /proc/meminfo */
     FILE* meminfo;
     char buffer[100] = {0};
@@ -17,6 +28,7 @@ void TVPGetMemoryInfo(TVPMemoryInfo &m)
 
     /* Try to read /proc/meminfo, bail out if fails */
 	meminfo = fopen("/proc/meminfo", "r");
+    if (!meminfo) return;
 
     static const char
         pszMemFree[] = "MemFree:",
@@ -43,25 +55,21 @@ void TVPGetMemoryInfo(TVPMemoryInfo &m)
         {
             m.SwapTotal = strtol( buffer + sizeof(pszSwapTotal), &end, 10 );
             found++;
-            break;
         }
         else if( strstr( buffer, pszSwapFree ) == buffer )
         {
             m.SwapFree = strtol( buffer + sizeof(pszSwapFree), &end, 10 );
             found++;
-            break;
         }
         else if( strstr( buffer, pszVmallocTotal ) == buffer )
         {
             m.VirtualTotal = strtol( buffer + sizeof(pszVmallocTotal), &end, 10 );
             found++;
-            break;
         }
         else if( strstr( buffer, pszVmallocUsed ) == buffer )
         {
             m.VirtualUsed = strtol( buffer + sizeof(pszVmallocUsed), &end, 10 );
             found++;
-            break;
         }
     }
     fclose(meminfo);

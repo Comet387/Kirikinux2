@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include "Clock.h"
 #include "Thread.h"
 #include "StreamInfo.h"
