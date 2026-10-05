@@ -34,6 +34,30 @@ route02 历史记录见 [docs/linux-game-verification.md](docs/linux-game-verifi
 安装时默认将 FFmpeg 与 FMOD 共享库放入引擎的 lib 目录，启动器设置加载路径。
 GTK、OpenGL、OpenAL 等系统依赖仍需安装；安装入口 --help、迁移后的启动器实际运行与游戏读档均已通过。
 
+## AppImage
+
+原版引擎的打包入口是 `scripts/linux/package-appimage.sh`，复用根目录构建结果，
+不构建 `linux/` 或 `linux-native/` 诊断宿主。安装 `patchelf` 后，将官方
+`appimagetool` 放入 PATH，或通过 `APPIMAGETOOL` 指定其绝对路径：
+
+```sh
+./scripts/linux/build.sh -DCMAKE_BUILD_TYPE=Release
+APPIMAGE_EXTRACT_AND_RUN=1 APPIMAGETOOL=/absolute/path/appimagetool-x86_64.AppImage \
+  ./scripts/linux/package-appimage.sh
+chmod +x dist/Kirikiroid2-original-x86_64.AppImage
+./dist/Kirikiroid2-original-x86_64.AppImage /absolute/path/to/game-or-data.xp3
+```
+
+不传游戏路径时打开原版文件选择器。无 FUSE 的常规 Linux 环境可使用
+`--appimage-extract-and-run`。输出目录由 `KR2_PACKAGE_DIR` 控制；再次打包时选择
+新的输出目录。`BUILD_DIR` 可指定已有的原版 CMake 构建目录。
+
+包内包含引擎、原版 UI、CJK 字体、FFmpeg、FMOD 和自动解析出的运行库；保留主机
+glibc 和 OpenGL/显卡驱动。此次本机构建版本面向 x86_64 Ubuntu 24.04 或更新版本，
+其他发行版尚未验收。不包含游戏。打包验证及限制见
+[docs/linux-appimage.md](docs/linux-appimage.md)。远端 CI 已增加原版 AppImage 打包、
+真实 XP3 回归和独立制品上传步骤，尚未在远端执行。
+
 分步执行：
 
 ```sh
