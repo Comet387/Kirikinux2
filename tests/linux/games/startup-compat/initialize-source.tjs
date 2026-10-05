@@ -1,0 +1,7 @@
+if (kirikiriz != false) throw "Unexpected krkrz API flag";
+// SPDX-License-Identifier: AGPL-3.0-only
+if (debugWindowEnabled != false) throw "Bytecode debugger default mismatch";
+debugWindowEnabled = true;
+if (!debugWindowEnabled) throw "Bytecode debugger flag not writable";
+debugWindowEnabled = false;
+Debug.message("KIRIKINUX_STARTUP_COMPAT_BYTECODE_OK");

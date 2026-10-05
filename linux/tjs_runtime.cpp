@@ -7,6 +7,7 @@
 #include "tjsDictionary.h"
 #include "tjsError.h"
 #include "tjsNative.h"
+#include "StartupCompatibility.h"
 
 #include <algorithm>
 #include <chrono>
@@ -137,6 +138,91 @@ std::string variant_string(tTJSVariant *value) {
   return ttstr(*value).AsStdString();
 }
 
+// ScriptsEx exposes this as a static Scripts.foreach(obj, callback, args*).
+// Senren*Banka's KAG bytecode uses it during environment construction.  Keep
+// the implementation in the Linux host instead of requiring the optional
+// Windows DLL, and preserve the plugin's callback contract: (key, value,
+// args...), with a non-void callback result stopping the traversal.
+class ScriptsForeachCaller : public tTJSDispatch {
+ public:
+  ScriptsForeachCaller(iTJSDispatch2 *function, iTJSDispatch2 *function_this,
+                       tTJSVariant **arguments, tjs_int argument_count)
+      : function_(function), function_this_(function_this),
+        arguments_(arguments), argument_count_(argument_count) {}
+
+  tjs_error TJS_INTF_METHOD FuncCall(
+      tjs_uint32, const tjs_char *, tjs_uint32 *, tTJSVariant *result,
+      tjs_int numparams, tTJSVariant **param, iTJSDispatch2 *) override {
+    break_result_.Clear();
+    // EnumMembers passes name, member flags and value.  Hidden members are
+    // intentionally skipped, matching the ScriptsEx plugin.
+    if (numparams > 1 && static_cast<tjs_int>(*param[1]) != TJS_HIDDENMEMBER) {
+      arguments_[0] = param[0];
+      arguments_[1] = param[2];
+      function_->FuncCall(0, nullptr, nullptr, &break_result_, argument_count_,
+                          arguments_, function_this_);
+    }
+    if (result) *result = break_result_.Type() == tvtVoid;
+    return TJS_S_OK;
+  }
+
+  const tTJSVariant &break_result() const { return break_result_; }
+
+ private:
+  iTJSDispatch2 *function_;
+  iTJSDispatch2 *function_this_;
+  tTJSVariant **arguments_;
+  tjs_int argument_count_;
+  tTJSVariant break_result_;
+};
+
+tjs_error TJS_INTF_METHOD scripts_foreach(
+    tTJSVariant *result, tjs_int numparams, tTJSVariant **param,
+    iTJSDispatch2 *objthis) {
+  if (numparams < 2 || param[0]->Type() != tvtObject ||
+      param[1]->Type() != tvtObject) {
+    return TJS_E_BADPARAMCOUNT;
+  }
+
+  const tTJSVariantClosure object = param[0]->AsObjectClosureNoAddRef();
+  const tTJSVariantClosure callback = param[1]->AsObjectClosureNoAddRef();
+  if (!object.Object || !callback.Object) return TJS_E_INVALIDPARAM;
+  iTJSDispatch2 *callback_this = callback.ObjThis ? callback.ObjThis : objthis;
+
+  std::vector<tTJSVariant *> arguments(static_cast<std::size_t>(numparams));
+  tTJSVariant key;
+  tTJSVariant value;
+  arguments[0] = &key;
+  arguments[1] = &value;
+  for (tjs_int index = 2; index < numparams; ++index)
+    arguments[static_cast<std::size_t>(index)] = param[index];
+
+  tTJSVariant break_result;
+  if (object.IsInstanceOf(0, nullptr, nullptr, TJS_W("Array"), nullptr) ==
+      TJS_S_TRUE) {
+    tTJSVariant count;
+    object.PropGet(0, TJS_W("count"), nullptr, &count, nullptr);
+    const tjs_int length = static_cast<tjs_int>(count);
+    for (tjs_int index = 0; index < length; ++index) {
+      key = index;
+      value.Clear();
+      object.PropGetByNum(TJS_IGNOREPROP, index, &value, nullptr);
+      break_result.Clear();
+      callback.Object->FuncCall(0, nullptr, nullptr, &break_result, numparams,
+                                arguments.data(), callback_this);
+      if (break_result.Type() != tvtVoid) break;
+    }
+  } else {
+    ScriptsForeachCaller caller(callback.Object, callback_this, arguments.data(),
+                                numparams);
+    tTJSVariantClosure closure(&caller);
+    object.EnumMembers(TJS_IGNOREPROP, &closure, nullptr);
+    break_result = caller.break_result();
+  }
+  if (result) *result = break_result;
+  return TJS_S_OK;
+}
+
 void execute_storage_entry(const std::string &entry, bool expression,
                            tTJSVariant *result, iTJSDispatch2 *context) {
   if (!active_storage_runtime || !active_storage_runtime->engine ||
@@ -153,6 +239,17 @@ void execute_storage_entry(const std::string &entry, bool expression,
   }
   if (!active_storage_runtime->storage->read(resolved, source, error)) {
     throw_storage_error(error);
+    return;
+  }
+  // KAG distributions normally store compiled TJS bytecode.  Probe the
+  // bytecode header before decoding as text so the diagnostic host follows
+  // the production storage runner and preserves the original script name in
+  // any exception trace.
+  if (source.size() >= 8 && std::equal(source.begin(), source.begin() + 7,
+                                       std::begin("TJS2100"))) {
+    const ttstr source_name(active_storage_runtime->storage->placed_path(resolved));
+    active_storage_runtime->engine->LoadByteCode(
+        source.data(), source.size(), result, context, source_name.c_str());
     return;
   }
   std::string decoded;
@@ -372,7 +469,11 @@ tjs_error TJS_INTF_METHOD plugins_link(
     iTJSDispatch2 *) {
   if (numparams < 1) return TJS_E_BADPARAMCOUNT;
   const std::string name = ascii_lower_copy(variant_string(param[0]));
-  if (name != "layereximage.dll") {
+  // motionplayer.dll is an optional Windows plugin.  The Linux startup
+  // compatibility namespace supplies its Motion objects, so linking the
+  // absent DLL must be a successful no-op rather than aborting startup.
+  if (name != "layereximage.dll" && name != "motionplayer.dll" &&
+      name != "motionplayer_nod3d.dll") {
     throw_storage_error("unsupported Windows plugin in Linux build: " + name);
     return TJS_E_FAIL;
   }
@@ -385,7 +486,11 @@ tjs_error TJS_INTF_METHOD plugins_unlink(
     iTJSDispatch2 *) {
   if (numparams < 1) return TJS_E_BADPARAMCOUNT;
   const std::string name = ascii_lower_copy(variant_string(param[0]));
-  if (result) *result = static_cast<tjs_int>(name == "layereximage.dll");
+  if (result) {
+    *result = static_cast<tjs_int>(
+        name == "layereximage.dll" || name == "motionplayer.dll" ||
+        name == "motionplayer_nod3d.dll");
+  }
   return TJS_S_OK;
 }
 
@@ -393,12 +498,16 @@ tjs_error TJS_INTF_METHOD plugins_get_list(
     tTJSVariant *result, tjs_int, tTJSVariant **, iTJSDispatch2 *) {
   if (!result) return TJS_S_OK;
   iTJSDispatch2 *array = TJSCreateArrayObject();
-  tTJSVariant item(TJS_W("layerExImage.dll"));
-  const tjs_error status = array->PropSetByNum(
-      TJS_MEMBERENSURE | TJS_IGNOREPROP, 0, &item, array);
-  if (TJS_FAILED(status)) {
-    array->Release();
-    return status;
+  const tjs_char *names[] = {
+      TJS_W("layerExImage.dll"), TJS_W("motionplayer.dll")};
+  for (tjs_int index = 0; index < 2; ++index) {
+    tTJSVariant item(names[index]);
+    const tjs_error status = array->PropSetByNum(
+        TJS_MEMBERENSURE | TJS_IGNOREPROP, index, &item, array);
+    if (TJS_FAILED(status)) {
+      array->Release();
+      return status;
+    }
   }
   result->SetObject(array, array);
   array->Release();
@@ -446,6 +555,99 @@ void set_property(iTJSDispatch2 *object, const tjs_char *name,
   if (TJS_FAILED(status)) throw_storage_error("cannot register Linux TJS property");
 }
 
+void install_tvp_script_constants(tTJS *engine) {
+  // The full player installs TVPInitTJSScript before startup.  The small
+  // Linux host does not link the GUI platform, but KAG bytecode still reads
+  // these layer/blend/cursor constants while creating its environment.  Keep
+  // the values identical to ScriptMgnIntf.cpp so a game cannot fail merely
+  // because it is running through the platform-neutral bootstrap.
+  struct Constant {
+    const tjs_char *name;
+    tjs_int value;
+  };
+  static const Constant constants[] = {
+      {TJS_W("bsNone"), 0}, {TJS_W("bsSingle"), 1},
+      {TJS_W("bsSizeable"), 2}, {TJS_W("bsDialog"), 3},
+      {TJS_W("utNormal"), 0}, {TJS_W("utEntire"), 1},
+      {TJS_W("mbLeft"), 0}, {TJS_W("mbRight"), 1},
+      {TJS_W("mbMiddle"), 2}, {TJS_W("mbX1"), 3}, {TJS_W("mbX2"), 4},
+      {TJS_W("mcsVisible"), 0}, {TJS_W("mcsTempHidden"), 1},
+      {TJS_W("mcsHidden"), 2}, {TJS_W("imDisable"), 0},
+      {TJS_W("imClose"), 1}, {TJS_W("imOpen"), 2},
+      {TJS_W("ssShift"), 1}, {TJS_W("ssAlt"), 2},
+      {TJS_W("ssCtrl"), 4}, {TJS_W("ssLeft"), 8},
+      {TJS_W("ssRight"), 16}, {TJS_W("ssMiddle"), 32},
+      {TJS_W("ssDouble"), 64}, {TJS_W("ssRepeat"), 128},
+      {TJS_W("ltBinder"), 0}, {TJS_W("ltCoverRect"), 1},
+      {TJS_W("ltOpaque"), 1}, {TJS_W("ltTransparent"), 2},
+      {TJS_W("ltAlpha"), 2}, {TJS_W("ltAdditive"), 3},
+      {TJS_W("ltSubtractive"), 4}, {TJS_W("ltMultiplicative"), 5},
+      {TJS_W("ltEffect"), 6}, {TJS_W("ltFilter"), 7},
+      {TJS_W("ltDodge"), 8}, {TJS_W("ltDarken"), 9},
+      {TJS_W("ltLighten"), 10}, {TJS_W("ltScreen"), 11},
+      {TJS_W("ltAddAlpha"), 12}, {TJS_W("ltPsNormal"), 13},
+      {TJS_W("ltPsAdditive"), 14}, {TJS_W("ltPsSubtractive"), 15},
+      {TJS_W("ltPsMultiplicative"), 16}, {TJS_W("ltPsScreen"), 17},
+      {TJS_W("ltPsOverlay"), 18}, {TJS_W("ltPsHardLight"), 19},
+      {TJS_W("ltPsSoftLight"), 20}, {TJS_W("ltPsColorDodge"), 21},
+      {TJS_W("ltPsColorDodge5"), 22}, {TJS_W("ltPsColorBurn"), 23},
+      {TJS_W("ltPsLighten"), 24}, {TJS_W("ltPsDarken"), 25},
+      {TJS_W("ltPsDifference"), 26}, {TJS_W("ltPsDifference5"), 27},
+      {TJS_W("ltPsExclusion"), 28}, {TJS_W("omPsNormal"), 13},
+      {TJS_W("omPsAdditive"), 14}, {TJS_W("omPsSubtractive"), 15},
+      {TJS_W("omPsMultiplicative"), 16}, {TJS_W("omPsScreen"), 17},
+      {TJS_W("omPsOverlay"), 18}, {TJS_W("omPsHardLight"), 19},
+      {TJS_W("omPsSoftLight"), 20}, {TJS_W("omPsColorDodge"), 21},
+      {TJS_W("omPsColorDodge5"), 22}, {TJS_W("omPsColorBurn"), 23},
+      {TJS_W("omPsLighten"), 24}, {TJS_W("omPsDarken"), 25},
+      {TJS_W("omPsDifference"), 26}, {TJS_W("omPsDifference5"), 27},
+      {TJS_W("omPsExclusion"), 28}, {TJS_W("omAdditive"), 3},
+      {TJS_W("omSubtractive"), 4}, {TJS_W("omMultiplicative"), 5},
+      {TJS_W("omDodge"), 8}, {TJS_W("omDarken"), 9},
+      {TJS_W("omLighten"), 10}, {TJS_W("omScreen"), 11},
+      {TJS_W("omAddAlpha"), 12}, {TJS_W("omOpaque"), 1},
+      {TJS_W("omAlpha"), 2}, {TJS_W("omAuto"), 128},
+      {TJS_W("dfBoth"), 0}, {TJS_W("dfAlpha"), 0},
+      {TJS_W("dfAddAlpha"), 4}, {TJS_W("dfMain"), 1},
+      {TJS_W("dfOpaque"), 1}, {TJS_W("dfMask"), 2},
+      {TJS_W("dfProvince"), 3}, {TJS_W("dfAuto"), 128},
+      {TJS_W("htMask"), 0}, {TJS_W("htProvince"), 1},
+      {TJS_W("sttLeft"), 0}, {TJS_W("sttTop"), 1},
+      {TJS_W("sttRight"), 2}, {TJS_W("sttBottom"), 3},
+      {TJS_W("ststNoStay"), 0}, {TJS_W("ststStayDest"), 1},
+      {TJS_W("ststStaySrc"), 2}, {TJS_W("tkdlNone"), 0},
+      {TJS_W("tkdlSimple"), 1}, {TJS_W("tkdlVerbose"), 2},
+      {TJS_W("atmNormal"), 0}, {TJS_W("atmExclusive"), 1},
+      {TJS_W("atmAtIdle"), 2}, {TJS_W("stNearest"), 0},
+      {TJS_W("stFastLinear"), 1}, {TJS_W("stLinear"), 2},
+      {TJS_W("stCubic"), 3}, {TJS_W("stSemiFastLinear"), 4},
+      {TJS_W("stFastCubic"), 5}, {TJS_W("stLanczos2"), 6},
+      {TJS_W("stFastLanczos2"), 7}, {TJS_W("stLanczos3"), 8},
+      {TJS_W("stFastLanczos3"), 9}, {TJS_W("stSpline16"), 10},
+      {TJS_W("stFastSpline16"), 11}, {TJS_W("stSpline36"), 12},
+      {TJS_W("stFastSpline36"), 13}, {TJS_W("stAreaAvg"), 14},
+      {TJS_W("stFastAreaAvg"), 15}, {TJS_W("stGaussian"), 16},
+      {TJS_W("stFastGaussian"), 17}, {TJS_W("stBlackmanSinc"), 18},
+      {TJS_W("stFastBlackmanSinc"), 19}, {TJS_W("stRefNoClip"), 0x10000},
+      {TJS_W("cbfText"), 1}, {TJS_W("clIdle"), 5},
+      {TJS_W("clDeactivate"), 10}, {TJS_W("clMinimize"), 15},
+      {TJS_W("clAll"), 100}, {TJS_W("vomOverlay"), 0},
+      {TJS_W("vomLayer"), 1}, {TJS_W("vomMixer"), 2},
+      {TJS_W("vomMFEVR"), 3}, {TJS_W("perLoop"), 0},
+      {TJS_W("perPeriod"), 1}, {TJS_W("perPrepare"), 2},
+      {TJS_W("perSegLoop"), 3}, {TJS_W("sgfmNeverMute"), 0},
+      {TJS_W("sgfmMuteOnMinimize"), 1},
+      {TJS_W("sgfmMuteOnDeactivate"), 2}, {TJS_W("oriUnknown"), 0},
+      {TJS_W("oriPortrait"), 1}, {TJS_W("oriLandscape"), 2},
+      {TJS_W("faReadOnly"), 0x01}, {TJS_W("faHidden"), 0x02},
+      {TJS_W("faSysFile"), 0x04}, {TJS_W("faVolumeID"), 0x08},
+      {TJS_W("faDirectory"), 0x10}, {TJS_W("faArchive"), 0x20},
+      {TJS_W("faAnyFile"), 0x3f},
+  };
+  for (const Constant &constant : constants)
+    set_global_property(engine, constant.name, tTJSVariant(constant.value));
+}
+
 void install_storage_compatibility(tTJS *engine) {
   iTJSDispatch2 *debug = TJSCreateDictionaryObject();
   try {
@@ -467,7 +669,7 @@ void install_storage_compatibility(tTJS *engine) {
     set_property(system, TJS_W("personalPath"), tTJSVariant(TJS_W("")));
     set_property(system, TJS_W("osName"), tTJSVariant(TJS_W("Linux")));
     set_property(system, TJS_W("platformName"), tTJSVariant(TJS_W("Linux")));
-    set_property(system, TJS_W("versionString"), tTJSVariant(TJS_W("Kirikiroid2 Linux")));
+    set_property(system, TJS_W("versionString"), tTJSVariant(TJS_W("Kirikinux2 Linux")));
     set_property(system, TJS_W("eventDisabled"), tTJSVariant(static_cast<tjs_int>(0)));
     set_method(system, TJS_W("createAppLock"), system_create_app_lock);
     set_method(system, TJS_W("getTickCount"), debug_get_tick_count);
@@ -506,6 +708,7 @@ void install_storage_compatibility(tTJS *engine) {
     set_method(scripts, TJS_W("evalStorage"), scripts_eval_storage);
     set_method(scripts, TJS_W("exec"), scripts_exec);
     set_method(scripts, TJS_W("eval"), scripts_eval);
+    set_method(scripts, TJS_W("foreach"), scripts_foreach);
     set_global_object(engine, TJS_W("Scripts"), scripts);
   } catch (...) {
     scripts->Release();
@@ -531,6 +734,12 @@ void install_storage_compatibility(tTJS *engine) {
     throw;
   }
   storages->Release();
+
+  install_tvp_script_constants(engine);
+
+  // Keep the diagnostic host's storage runner consistent with the full Linux
+  // player: Android patches may probe Motion before disabling their D3D path.
+  TVPInstallLinuxPluginCompatibility(*engine);
 }
 
 TjsRunResult make_value(tTJSVariant &value) {
@@ -621,6 +830,15 @@ TjsRunResult execute_tjs_file(const std::string &path) {
 
 TjsRunResult execute_tjs_bytes(const std::vector<std::uint8_t> &source,
                                const std::string &source_name) {
+  if (source.size() >= 7 && std::equal(source.begin(), source.begin() + 7,
+                                       std::begin("TJS2100"))) {
+    return run_tjs([&](tTJS *engine, tTJSVariant &result) {
+      install_storage_compatibility(engine);
+      const ttstr name(source_name);
+      engine->LoadByteCode(source.data(), source.size(), &result, nullptr,
+                           name.c_str());
+    });
+  }
   std::string decoded;
   if (!decode_source(source, decoded)) {
     TjsRunResult result;
@@ -628,6 +846,7 @@ TjsRunResult execute_tjs_bytes(const std::vector<std::uint8_t> &source,
     return result;
   }
   return run_tjs([&](tTJS *engine, tTJSVariant &result) {
+    install_storage_compatibility(engine);
     const ttstr name(source_name);
     engine->ExecScript(ttstr(decoded), &result, nullptr, &name);
   });

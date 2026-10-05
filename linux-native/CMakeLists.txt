@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Kirikiroid2Linux
+project(kirikinuxLinux
     VERSION 1.3.9
-    DESCRIPTION "Native Linux frontend for Kirikiroid2"
+    DESCRIPTION "Native Linux frontend for Kirikinux2"
     LANGUAGES CXX
 )
 
-option(KIRIKIROID2_ENABLE_LEGACY_CORE
-    "Build the historical Kirikiroid2 core when its unvendored dependencies are present"
+option(KIRIKINUX_ENABLE_LEGACY_CORE
+    "Build the historical Kirikinux2 core when its unvendored dependencies are present"
     OFF
 )
 
@@ -32,36 +32,36 @@ else()
     message(FATAL_ERROR "SDL2 was found but did not export SDL2::SDL2 or SDL2::SDL2-static")
 endif()
 
-add_executable(kirikiroid2-linux
+add_executable(kirikinux-linux
     src/main.cpp
 )
 
-target_link_libraries(kirikiroid2-linux PRIVATE ${KR2_SDL_TARGET})
-target_compile_features(kirikiroid2-linux PRIVATE cxx_std_17)
-target_compile_definitions(kirikiroid2-linux PRIVATE
-    KIRIKIROID2_VERSION=\"${PROJECT_VERSION}\"
+target_link_libraries(kirikinux-linux PRIVATE ${KR2_SDL_TARGET})
+target_compile_features(kirikinux-linux PRIVATE cxx_std_17)
+target_compile_definitions(kirikinux-linux PRIVATE
+    KIRIKINUX_VERSION=\"${PROJECT_VERSION}\"
 )
 
 if (UNIX AND NOT APPLE)
     include(GNUInstallDirs)
 endif()
 
-install(TARGETS kirikiroid2-linux
+install(TARGETS kirikinux-linux
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 install(FILES
     "${CMAKE_CURRENT_LIST_DIR}/../LICENSE"
-    DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/kirikiroid2"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/kirikinux"
 )
 install(FILES
     "${CMAKE_CURRENT_LIST_DIR}/README.md"
-    DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/kirikiroid2"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/kirikinux"
 )
 
-set(CPACK_PACKAGE_NAME "kirikiroid2-linux")
-set(CPACK_PACKAGE_VENDOR "Kirikiroid2 contributors")
-set(CPACK_PACKAGE_CONTACT "https://github.com/zeas2/Kirikiroid2")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Native Linux SDL2 frontend for Kirikiroid2")
+set(CPACK_PACKAGE_NAME "kirikinux-linux")
+set(CPACK_PACKAGE_VENDOR "Kirikinux2 contributors")
+set(CPACK_PACKAGE_CONTACT "https://github.com/Comet387/kirikinux2")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Native Linux SDL2 frontend for Kirikinux2")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_LIST_DIR}/../LICENSE")
 set(CPACK_GENERATOR "DEB")
@@ -71,7 +71,7 @@ set(CPACK_DEBIAN_PACKAGE_SECTION "games")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl2-2.0-0")
 include(CPack)
 
-if (KIRIKIROID2_ENABLE_LEGACY_CORE)
+if (KIRIKINUX_ENABLE_LEGACY_CORE)
     message(FATAL_ERROR
         "The historical core is not wired into this target yet. The upstream tree "
         "does not include its Cocos2d-x/FFmpeg/vendor submodules; see README.md.")

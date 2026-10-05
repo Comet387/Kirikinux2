@@ -61,13 +61,15 @@ public:
 };
 
 class TVPPreferenceForm : public iTVPBaseForm {
+public:
+    virtual void rearrangeLayout() override;
 protected:
 	void initPref(const tPreferenceScreen *config);
 	virtual void bindBodyController(const NodeMap &allNodes) override;
 	virtual void bindHeaderController(const NodeMap &allNodes) override;
 
 	const tPreferenceScreen *Config = nullptr;
-	cocos2d::ui::ListView *PrefList;
+	cocos2d::ui::ListView *PrefList = nullptr;
 	cocos2d::ui::Button *_title;
 };
 

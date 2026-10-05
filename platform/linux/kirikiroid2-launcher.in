@@ -1,6 +1,0 @@
-#!/bin/sh
-# Prefer the runtime libraries shipped with this installed engine.
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
-runtime_dir=$(CDPATH= cd -- "$script_dir/@KR2_REL_RUNTIME@" && pwd) || exit 1
-export LD_LIBRARY_PATH="$runtime_dir/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-exec "$runtime_dir/kirikiroid2" "$@"

@@ -15,6 +15,7 @@
 #include "tjsDebug.h"
 #include "tjsArray.h"
 #include "ScriptMgnIntf.h"
+#include "StartupCompatibility.h"
 #include "StorageIntf.h"
 #include "DebugIntf.h"
 #include "WindowIntf.h"
@@ -42,6 +43,8 @@
 #include "SysInitImpl.h"
 #include "SystemControl.h"
 #include "Application.h"
+
+#include <vector>
 
 #include "RectItf.h"
 #include "ImageFunction.h"
@@ -496,7 +499,6 @@ void TVPInitScriptEngine()
 	iTJSDispatch2 *dsp;
 	iTJSDispatch2 *global = TVPScriptEngine->GetGlobalNoAddRef();
 
-
 #define REGISTER_OBJECT(classname, instance) \
 	dsp = (instance); \
 	val = tTJSVariant(dsp/*, dsp*/); \
@@ -881,6 +883,13 @@ void TVPOpenPatchLibUrl();
 //---------------------------------------------------------------------------
 void TVPExecuteStartupScript()
 {
+    TVPStartupSuccess = false;
+    // Base systems and xp3filter are ready. Use the actual resolved entry,
+    // including auto paths, instead of the path originally selected in the UI.
+    const ttstr startupPlace(TVPSearchPlacedPath(TVPStartupScriptName));
+    const ttstr &contextPlace = startupPlace.IsEmpty() ? TVPProjectDir : startupPlace;
+    TVPInitializeKAGStartupContext(*TVPScriptEngine,
+        TJS_strchr(contextPlace.c_str(), TVPArchiveDelimiter) != NULL);
 	ttstr strPatchError;
     try {
         ttstr patch = TVPGetAppPath() + "patch.tjs";
@@ -914,12 +923,9 @@ void TVPExecuteStartupScript()
 		ttstr msg = LocaleConfigManager::GetInstance()->GetText("startup_patch_fail");
 		msg += "\n";
 		msg += strPatchError;
-		std::vector<ttstr> btns;
-		btns.emplace_back(LocaleConfigManager::GetInstance()->GetText("msgbox_ok"));
-		btns.emplace_back(LocaleConfigManager::GetInstance()->GetText("browse_patch_lib"));
-		if (TVPShowSimpleMessageBox(msg, TVPGetPackageVersionString(), btns) == 1) {
-			TVPOpenPatchLibUrl();
-		}
+        // Do not start the game against a partially applied patch. The
+        // application shows this original patch error, with its trace, once.
+        TVPThrowExceptionMessage(msg.c_str());
 	}
 
 	// execute "startup.tjs"
@@ -931,31 +937,17 @@ void TVPExecuteStartupScript()
             ttstr place(TVPSearchPlacedPath(TVPStartupScriptName));
             TVPAddLog(TJS_W("(info) Loading startup script : ") + place);
 			TVPStartupSuccess = false;
-            try {
-                iTJSTextReadStream * stream = TVPCreateTextStreamForRead(place, "");
-                stream->Destruct();
-                TVPExecuteStorage(TVPStartupScriptName);
-				TVPStartupSuccess = true;
-            }
-            catch (...)
-            {
-				if (!TVPIsExistentStorage(TJS_W("System/Initialize.tjs"))) {
-					throw;
-				}
-            }
-			if (TVPStartupSuccess) {
-            } else {
-                // try direct execute initialize.tjs to compatible for some patch
-                TVPExecuteStorage(TJS_W("System/Initialize.tjs"));
-				TVPStartupSuccess = true;
-            }
-			TVPAddLog(TJS_W("(info) Startup script ended."));
+            TVPExecuteStartupEntry(TVPStartupScriptName,
+                [](const ttstr &name) { return TVPIsExistentStorage(name); },
+                [](const ttstr &name) { TVPExecuteStorage(name); });
+            TVPStartupSuccess = true;
 			try {
 				ttstr patch = TVPGetAppPath() + "AfterStartup.tjs";
 				if (TVPIsExistentStorageNoSearch(patch))
 					TVPExecuteStorage(patch);
 			}
-			catch (...) {}
+			catch (...) { TVPStartupSuccess = false; throw; }
+            TVPAddLog(TJS_W("(info) Startup script ended."));
 		}
 		TJS_CONVERT_TO_TJS_EXCEPTION
 	//}
@@ -1291,6 +1283,41 @@ void TVPInitializeStartupScript()
 //---------------------------------------------------------------------------
 // tTJSNC_Scripts
 //---------------------------------------------------------------------------
+// ScriptsEx's foreach helper is part of the script ABI used by KAG-derived
+// games. Keep it in the core Scripts class so startup does not depend on a
+// Windows-only DLL being loadable on Linux.
+class TVPScriptsForeachCaller : public tTJSDispatch
+{
+public:
+    TVPScriptsForeachCaller(iTJSDispatch2 *func, iTJSDispatch2 *functhis,
+             tTJSVariant **paramlist, tjs_int paramcount)
+        : Func(func), FuncThis(functhis), ParamList(paramlist), ParamCount(paramcount) {}
+
+    tjs_error TJS_INTF_METHOD FuncCall(tjs_uint32, const tjs_char *, tjs_uint32 *,
+        tTJSVariant *result, tjs_int numparams, tTJSVariant **param,
+        iTJSDispatch2 *) override
+    {
+        BreakResult.Clear();
+        if(numparams > 1 && (tjs_int)*param[1] != TJS_HIDDENMEMBER)
+        {
+            ParamList[0] = param[0];
+            ParamList[1] = param[2];
+            (void)Func->FuncCall(0, NULL, NULL, &BreakResult, ParamCount,
+                ParamList, FuncThis);
+        }
+        if(result) *result = BreakResult.Type() == tvtVoid;
+        return TJS_S_OK;
+    }
+
+    tTJSVariant BreakResult;
+
+private:
+    iTJSDispatch2 *Func;
+    iTJSDispatch2 *FuncThis;
+    tTJSVariant **ParamList;
+    tjs_int ParamCount;
+};
+
 tjs_uint32 tTJSNC_Scripts::ClassID = -1;
 tTJSNC_Scripts::tTJSNC_Scripts() : inherited(TJS_W("Scripts"))
 {
@@ -1421,6 +1448,49 @@ TJS_BEGIN_NATIVE_METHOD_DECL(/*func. name*/eval)
 	return TJS_S_OK;
 }
 TJS_END_NATIVE_STATIC_METHOD_DECL(/*func. name*/eval)
+//----------------------------------------------------------------------
+TJS_BEGIN_NATIVE_METHOD_DECL(/*func. name*/foreach)
+{
+    if(numparams < 2) return TJS_E_BADPARAMCOUNT;
+    tTJSVariantClosure object = param[0]->AsObjectClosureNoAddRef();
+    tTJSVariantClosure callback = param[1]->AsObjectClosureNoAddRef();
+    if(!object.Object || !callback.Object) return TJS_E_INVALIDPARAM;
+    iTJSDispatch2 *callbackThis = callback.ObjThis ? callback.ObjThis : objthis;
+
+    std::vector<tTJSVariant *> paramList(static_cast<size_t>(numparams));
+    tTJSVariant key, value, breakResult;
+    paramList[0] = &key;
+    paramList[1] = &value;
+    for(tjs_int i = 2; i < numparams; ++i) paramList[static_cast<size_t>(i)] = param[i];
+
+    if(object.IsInstanceOf(0, NULL, NULL, TJS_W("Array"), NULL) == TJS_S_TRUE)
+    {
+        tTJSVariant countValue;
+        object.PropGet(0, TJS_W("count"), NULL, &countValue, NULL);
+        const tjs_int count = (tjs_int)countValue;
+        for(tjs_int i = 0; i < count; ++i)
+        {
+            key = i;
+            value.Clear();
+            object.PropGetByNum(TJS_IGNOREPROP, i, &value, NULL);
+            breakResult.Clear();
+            (void)callback.Object->FuncCall(0, NULL, NULL, &breakResult, numparams,
+                paramList.data(), callbackThis);
+            if(breakResult.Type() != tvtVoid) break;
+        }
+    }
+    else
+    {
+        TVPScriptsForeachCaller caller(callback.Object, callbackThis,
+            paramList.data(), numparams);
+        tTJSVariantClosure closure(&caller);
+        object.EnumMembers(TJS_IGNOREPROP, &closure, NULL);
+        breakResult = caller.BreakResult;
+    }
+    if(result) *result = breakResult;
+    return TJS_S_OK;
+}
+TJS_END_NATIVE_STATIC_METHOD_DECL(/*func. name*/foreach)
 //----------------------------------------------------------------------
 TJS_BEGIN_NATIVE_METHOD_DECL(/*func. name*/dump)
 {

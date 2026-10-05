@@ -1,4 +1,7 @@
 #include "FileSelectorForm.h"
+#include "DesktopScroll.h"
+#include "DesktopFileLayout.h"
+#include "ui/UILayout.h"
 #include "StorageImpl.h"
 #include "ui/UIListView.h"
 #include "ui/UIHelper.h"
@@ -108,8 +111,13 @@ void TVPBaseFileSelectorForm::bindBodyController(const NodeMap &allNodes) {
 	FileList = TableView::create(this, TableNode->getContentSize());
 	FileList->setVerticalFillOrder(TableView::VerticalFillOrder::TOP_DOWN);
 	FileList->setAnchorPoint(Vec2::ZERO);
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+    FileList->setClippingToBounds(true);
+#else
 	FileList->setClippingToBounds(false);
+#endif
 	TableNode->addChild(FileList);
+    TVPEnableDesktopScroll(FileList);
 // 	ListView::ccListViewCallback func = [this](Ref* cell, ListView::EventType e){
 // 		if (e == ListView::EventType::ON_SELECTED_ITEM_END) {
 // 			onCellClicked(static_cast<ListView*>(cell)->getCurSelectedIndex());
@@ -138,6 +146,9 @@ void TVPBaseFileSelectorForm::ListDir(std::string path) {
 			split_path.second.pop_back();
 		}
 #endif
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+        TVPFitPathButton(_title, split_path.second);
+#else
 		_title->setTitleText(split_path.second);
 
 		Size dispSize = _title->getTitleRenderer()->getContentSize();
@@ -152,6 +163,7 @@ void TVPBaseFileSelectorForm::ListDir(std::string path) {
 			path = path.SubString(0, charCutCount);
 			_title->setTitleText(path.AsStdString() + suffix);
 		}
+#endif
 	}
 
 	if (path.size() > RootPathLen && path.back() == '/') {
@@ -210,6 +222,7 @@ void TVPBaseFileSelectorForm::onCellClicked(int idx) {
 
 void TVPBaseFileSelectorForm::onCellLongPress(int idx)
 {
+    if (idx < 0 || static_cast<size_t>(idx) >= CurrentDirList.size()) return;
 	if (_fileOperateMenuNode) { // full file function
 		if (!_selectedFileIndex.empty()) {
 			return;
@@ -332,9 +345,27 @@ void TVPBaseFileSelectorForm::onTitleClicked(cocos2d::Ref *owner) {
 		TVPMainScene::GetInstance()->popUIForm(nullptr, TVPMainScene::eLeaveToBottom);
 	};
 	for (const std::string &path : paths) {
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+        Widget *cell = Widget::create();
+        cell->setContentSize(Size(640, 128));
+        auto *item = Button::create("img/empty.png", "img/white.png");
+        item->setTitleFontName(FileUtils::getInstance()->fullPathForFilename("DroidSansFallback.ttf"));
+        item->setTitleFontSize(44);
+        item->ignoreContentAdaptWithSize(false);
+        item->setContentSize(cell->getContentSize());
+        item->setPosition(cell->getContentSize() / 2);
+        cell->addChild(item);
+#else
 		CSBReader reader;
-		Widget *cell = dynamic_cast<Widget*>(reader.Load("ui/ListItem.csb"));
-		Button *item = dynamic_cast<Button*>(reader.findController("item"));
+		// ListItem.csb has a Layer root; a Layer is not a Widget. Wrap it
+        // before passing it to ListView instead of inserting a null cell.
+        Node *root = reader.Load("ui/ListItem.csb");
+        Button *item = reader.findController<Button>("item", false);
+        if (!root || !item) continue;
+        Widget *cell = Widget::create();
+        cell->setContentSize(root->getContentSize());
+        cell->addChild(root);
+#endif
 		item->setCallbackName(path);
 		item->setTitleText(path);
 		item->addClickEventListener(func);
@@ -342,8 +373,12 @@ void TVPBaseFileSelectorForm::onTitleClicked(cocos2d::Ref *owner) {
 		buttons.emplace_back(item);
 	}
 	_listform = TVPListForm::create(cells);
+    if (!_listform) return;
 	_listform->show();
 	// march all button's text in its width
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+    for (Button *btn : buttons) TVPFitPathButton(btn, btn->getCallbackName());
+#else
 	for (Button* btn : buttons) {
 		Size dispSize = btn->getTitleRenderer()->getContentSize();
 		Size realSize = btn->getContentSize();
@@ -355,6 +390,7 @@ void TVPBaseFileSelectorForm::onTitleClicked(cocos2d::Ref *owner) {
 			btn->setTitleText(prefix + text.substr(charCutCount));
 		}
 	}
+#endif
 }
 
 void TVPBaseFileSelectorForm::onBackClicked(cocos2d::Ref *owner) {
@@ -363,7 +399,11 @@ void TVPBaseFileSelectorForm::onBackClicked(cocos2d::Ref *owner) {
 
 TVPBaseFileSelectorForm::FileItemCellImpl* TVPBaseFileSelectorForm::FetchCell(FileItemCellImpl* CellModel, cocos2d::extension::TableView *table, ssize_t idx) {
 	if (!CellModel) {
-		CellModel = FileItemCellImpl::create(FileName_Cell, table->getViewSize().width);
+		float width=table->getViewSize().width;
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+        width=std::max(1.f,width-16.f/0.30f); // reserve the desktop scrollbar gutter
+#endif
+        CellModel = FileItemCellImpl::create(FileName_Cell, width);
 		CellModel->setAnchorPoint(Vec2::ZERO);
 		CellModel->setEventFunc([this](Widget::TouchEventType ev, Widget* sender, Touch *touch){
 			Vec2 touchPoint = touch->getLocation();
@@ -390,6 +430,9 @@ TVPBaseFileSelectorForm::FileItemCellImpl* TVPBaseFileSelectorForm::FetchCell(Fi
 		CellModel->retain();
 	}
 	bool selected = _selectedFileIndex.find(idx) != _selectedFileIndex.end();
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+    CellModel->setWidth(std::max(1.f, table->getViewSize().width - 16.f / 0.30f));
+#endif
 	CellModel->setInfo(idx, CurrentDirList[idx], selected, !_selectedFileIndex.empty());
 	return CellModel;
 }
@@ -434,7 +477,15 @@ Size TVPBaseFileSelectorForm::tableCellSizeForIndex(TableView *table, ssize_t id
 
 void TVPBaseFileSelectorForm::rearrangeLayout() {
 	iTVPBaseForm::rearrangeLayout();
-	if (FileList) FileList->setViewSize(FileList->getParent()->getContentSize());
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+    if (_title) TVPFitPathButton(_title, PathSplit(CurrentPath).second);
+#endif
+    if (FileList) {
+        FileList->setViewSize(FileList->getParent()->getContentSize());
+        for (auto &info : CurrentDirList) info.CellSize=Size::ZERO;
+        CC_SAFE_RELEASE_NULL(CellTemplateForSize);
+        ReloadTableViewAndKeepPos(FileList);
+    }
 }
 
 void TVPBaseFileSelectorForm::onUnselectClicked(cocos2d::Ref *owner)
@@ -754,6 +805,7 @@ void TVPBaseFileSelectorForm::clearFileMenu()
 
 void TVPBaseFileSelectorForm::_onCellClicked(int idx)
 {
+    if (idx < 0 || static_cast<size_t>(idx) >= CurrentDirList.size()) return;
 	if (_selectedFileIndex.empty())
 		return onCellClicked(idx);
 	auto it = _selectedFileIndex.find(idx);
@@ -772,47 +824,49 @@ bool TVPBaseFileSelectorForm::FileInfo::operator<(const FileInfo &rhs) const {
 
 TVPListForm * TVPListForm::create(const std::vector<cocos2d::ui::Widget*> &cells) {
 	TVPListForm *ret = new TVPListForm;
-	ret->initFromInfo(cells);
+	if (!ret->initFromInfo(cells)) { delete ret; return nullptr; }
 	ret->autorelease();
 	return ret;
 }
 
-void TVPListForm::initFromInfo(const std::vector<cocos2d::ui::Widget*> &cells) {
-	init();
-	float scale = TVPMainScene::GetInstance()->getUIScale();
-	cocos2d::Size sceneSize = TVPMainScene::GetInstance()->getUINodeSize() / scale;
-	setScale(scale);
-	setContentSize(sceneSize);
-	CSBReader reader;
-	_root = reader.Load("ui/ListView.csb");
-	ListView* listview = static_cast<ListView*>(reader.findController("list"));
-	float height = 10;
-	for (Widget* cell : cells) {
-		height += cell->getContentSize().height;
-	}
-	_root->setAnchorPoint(Size(0.5, 0.5));
-	_root->setPosition(sceneSize / 2);
-	sceneSize.width *= 0.8f;
-	sceneSize.height *= 0.8f;
-	if (height < sceneSize.height * scale) {
-		sceneSize.height = height;
-	}
-	_root->setContentSize(sceneSize);
-	ui::Helper::doLayout(_root);
-	float width = listview->getContentSize().width;
-	for (Widget* cell : cells) {
-		Size size = cell->getContentSize();
-		size.width = width;
-		cell->setContentSize(size);
-		ui::Helper::doLayout(cell);
-		listview->pushBackCustomItem(cell);
-	}
-	if (listview->getItems().back()->getBottomBoundary() < 0) {
-		listview->setClippingEnabled(true);
-	} else {
-		listview->setBounceEnabled(false);
-	}
-	addChild(_root);
+bool TVPListForm::initFromInfo(const std::vector<cocos2d::ui::Widget*> &cells) {
+    if (cells.empty() || !init()) return false;
+    CSBReader reader;
+    _root=reader.Load("ui/ListView.csb");
+    auto *list=reader.findController<ListView>("list",false);
+    if (!_root || !list) return false;
+    for (Widget *cell : cells) { if (!cell) return false; list->pushBackCustomItem(cell); }
+    addChild(_root);
+    rearrangeLayout();
+    return true;
+}
+
+void TVPListForm::rearrangeLayout() {
+    float scale=TVPMainScene::GetInstance()->getUIScale();
+    Size scene=TVPMainScene::GetInstance()->getUINodeSize()/scale;
+    setScale(scale);setContentSize(scene);
+    NodeMap nodes("ui/ListView.csb",_root);
+    auto *list=nodes.findController<ListView>("list",false);
+    if (!list) return;
+    float height=10;
+    for (Widget *cell : list->getItems()) height+=cell->getContentSize().height+list->getItemsMargin();
+    _root->setAnchorPoint(Vec2(.5f,.5f));_root->setPosition(scene/2);
+    _root->setContentSize(Size(scene.width*.8f,std::min(scene.height*.8f,height)));
+    ui::Helper::doLayout(_root);
+    for (Widget *cell : list->getItems()) {
+        Size size=cell->getContentSize();size.width=list->getContentSize().width;
+        cell->setContentSize(size);
+        for (Node *child : cell->getChildren()) {
+            child->setContentSize(size); ui::Helper::doLayout(child);
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+            if (auto *button = dynamic_cast<Button*>(child)) {
+                button->setPosition(size / 2);
+                TVPFitPathButton(button, button->getCallbackName());
+            }
+#endif
+        }
+    }
+    list->setClippingEnabled(true);list->setBounceEnabled(false);list->requestDoLayout();
 }
 
 void TVPListForm::show() {
@@ -933,6 +987,45 @@ void TVPFileSelectorForm::close() {
 }
 
 void TVPBaseFileSelectorForm::FileItemCellImpl::initFromFile(const char * filename, float width) {
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+    OrigCellModelSize = Size(std::max(1.f, width), 128);
+    auto *layout = Layout::create();
+    layout->setAnchorPoint(Vec2::ZERO);
+    layout->setClippingEnabled(true);
+    layout->setContentSize(OrigCellModelSize);
+    _root = layout;
+    addChild(_root);
+    setContentSize(OrigCellModelSize);
+    auto background = [&](const Color3B &color) {
+        auto *node = Layout::create();
+        node->setAnchorPoint(Vec2::ZERO);
+        node->setBackGroundColorType(Layout::BackGroundColorType::SOLID);
+        node->setBackGroundColor(color);
+        node->setContentSize(OrigCellModelSize);
+        layout->addChild(node);
+        return node;
+    };
+    BgOdd = background(Color3B(44, 44, 44));
+    BgEven = background(Color3B(36, 36, 36));
+    _hitTarget = Button::create("img/empty.png", "img/white.png");
+    _hitTarget->ignoreContentAdaptWithSize(false);
+    _hitTarget->setAnchorPoint(Vec2::ZERO);
+    _hitTarget->setContentSize(OrigCellModelSize);
+    _hitTarget->setOpacity(40);
+    layout->addChild(_hitTarget);
+    const std::string font = FileUtils::getInstance()->fullPathForFilename("DroidSansFallback.ttf");
+    FileNameNode = Text::create("", font, 44);
+    FileNameNode->setAnchorPoint(Vec2(0, .5f));
+    layout->addChild(FileNameNode);
+    DirIcon = Text::create(">", font, 52);
+    DirIcon->setAnchorPoint(Vec2(.5f, .5f));
+    layout->addChild(DirIcon);
+    SelectBox = CheckBox::create("img/CheckBox_Normal.png", "img/CheckBoxNode_Normal.png");
+    SelectBox->setTouchEnabled(false);
+    SelectBox->setScale(0.65f);
+    layout->addChild(SelectBox);
+    Widget *HighLight = _hitTarget;
+#else
 	CSBReader reader;
 	_root = reader.Load(filename);
 	addChild(_root);
@@ -955,6 +1048,8 @@ void TVPBaseFileSelectorForm::FileItemCellImpl::initFromFile(const char * filena
 	}
 	static const std::string str_highlight("highlight");
 	Widget *HighLight = static_cast<Widget *>(reader.findController(str_highlight));
+#endif
+	_hitTarget = HighLight;
 	if (HighLight) {
 		HighLight->addClickEventListener(std::bind(&FileItemCellImpl::onClicked, this, std::placeholders::_1));
 		HighLight->addTouchEventListener([this](Ref* p, Widget::TouchEventType ev){
@@ -977,11 +1072,38 @@ void TVPBaseFileSelectorForm::FileItemCellImpl::initFromFile(const char * filena
 			}
 		});
 	}
+#if CC_TARGET_PLATFORM != CC_PLATFORM_LINUX
 	BgOdd = reader.findController("bg_odd", false);
 	BgEven = reader.findController("bg_even", false);
+#endif
+}
+
+void TVPBaseFileSelectorForm::FileItemCellImpl::setWidth(float width) {
+    OrigCellModelSize.width = std::max(1.f, width);
 }
 
 void TVPBaseFileSelectorForm::FileItemCellImpl::setInfo(int idx, const FileInfo &info, bool selected, bool showSelect) {
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+    // All columns come from this row's current width. TableView recycles rows
+    // after resize, so neither text width nor arrow position may be cached.
+    setContentSize(OrigCellModelSize);
+    _root->setContentSize(OrigCellModelSize);
+    BgOdd->setContentSize(OrigCellModelSize);
+    BgEven->setContentSize(OrigCellModelSize);
+    _hitTarget->setContentSize(OrigCellModelSize);
+    const float width = OrigCellModelSize.width, middle = OrigCellModelSize.height / 2;
+    const float padding = std::min(24.f, width / 8);
+    const float iconWidth = std::min(64.f, width / 4);
+    const float right = width - padding - iconWidth / 2;
+    DirIcon->setPosition(right, middle);
+    DirIcon->setVisible(info.IsDir && !showSelect);
+    SelectBox->setPosition(Vec2(right, middle));
+    SelectBox->setVisible(showSelect);
+    SelectBox->setSelected(selected);
+    FileNameNode->setPosition(Vec2(padding, middle));
+    TVPFitFileText(FileNameNode, info.NameForDisplay,
+        std::max(0.f, width - padding * 2 - iconWidth - 16.f));
+#else
 	if (FileNameNode) {
 		FileNameNode->ignoreContentAdaptWithSize(true);
 		FileNameNode->setTextAreaSize(CellTextAreaSize);
@@ -996,6 +1118,7 @@ void TVPBaseFileSelectorForm::FileItemCellImpl::setInfo(int idx, const FileInfo 
 	SelectBox->setVisible(showSelect);
 	if (showSelect) SelectBox->setSelected(selected);
 	ui::Helper::doLayout(_root);
+#endif
 	_set = true;
 	if (BgOdd) BgOdd->setVisible((idx + 1) & 1);
 	if (BgEven) BgEven->setVisible(idx & 1);

@@ -48,7 +48,8 @@ void TVPGlobalPreferenceForm::Initialize()
 		Inited = true;
 		if (!GlobalConfigManager::GetInstance()->IsValueExist("GL_EXT_shader_framebuffer_fetch")) {
 			// disable GL_EXT_shader_framebuffer_fetch normally for adreno GPU
-			if (strstr((const char*)glGetString(GL_RENDERER), "Adreno")) {
+			const char *renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+			if (renderer && strstr(renderer, "Adreno")) {
 				GlobalConfigManager::GetInstance()->SetValueInt("GL_EXT_shader_framebuffer_fetch", 0);
 			}
 		}

@@ -1,0 +1,9 @@
+Kirikinux2 fixed source package
+
+Included fixes:
+- Marked scripts/linux/*.sh executable so GitHub Actions can invoke them.
+- Updated Cocos2d-x UI setPosition calls for the current Vec2 API.
+- Added the Linux XCB link dependency required by the standalone resource converter.
+
+The third-party dependencies are intentionally omitted from this source package;
+scripts/linux/fetch-thirdparty.sh downloads them during a normal build.

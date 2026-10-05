@@ -22,6 +22,7 @@
 #include "Platform.h"
 #include "ui/ConsoleWindow.h"
 #include "ui/FileSelectorForm.h"
+#include "ui/MainFileSelectorForm.h"
 #include "ui/DebugViewLayerForm.h"
 #include "Application.h"
 #include "ScriptMgnIntf.h"
@@ -512,6 +513,9 @@ public:
 	}
 
 	void onMouseScroll(Event *_e) {
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+        if (TVPMainScene::GetInstance()->hasUIForm()) return;
+#endif
 		EventMouse *e = static_cast<EventMouse*>(_e);
 		if (!_windowMgrOverlay) {
 			Vec2 nsp = PrimaryLayerArea->convertToNodeSpace(e->getLocation());
@@ -1717,7 +1721,8 @@ bool TVPMainScene::startupFrom(const std::string &path) {
 		return false;
 	}
 	IndividualConfigManager *pGlobalCfgMgr = IndividualConfigManager::GetInstance();
-	pGlobalCfgMgr->UsePreferenceAt(TVPBaseFileSelectorForm::PathSplit(path).first);
+	pGlobalCfgMgr->UsePreferenceAt(FileUtils::getInstance()->isDirectoryExist(path)
+        ? path : TVPBaseFileSelectorForm::PathSplit(path).first);
 	if (UINode->getChildrenCount()) {
 		popUIForm(nullptr);
 	}
@@ -1853,6 +1858,33 @@ void TVPMainScene::addLayer(TVPWindowLayer* lay) {
 // 	_currentWindowLayer = lay;
 }
 
+bool TVPMainScene::isTopUI(Node *node) const {
+    if (UINode->getChildrenCount()==0) return false;
+    Node *target=node;
+    while (node && node->getParent()!=UINode) node=node->getParent();
+    if (!node || node!=UINode->getChildren().back()) return false;
+    if(auto *browser=dynamic_cast<TVPMainFileSelectorForm*>(node)) return browser->acceptsDesktopScroll(target);
+    return true;
+}
+
+void TVPMainScene::resizeDesktopView(const Size &size) {
+    setContentSize(size); UISize=size;
+    ScreenRatio=Director::getInstance()->getOpenGLView()->getFrameSize().height/size.height;
+    GameNode->setContentSize(size);
+    for (Node *child : GameNode->getChildren()) if (auto *layer=dynamic_cast<TVPWindowLayer*>(child)) {
+        layer->setViewSize(size); layer->RecalcPaintBox();
+    }
+    UINode->setContentSize(UINode->getRotation()<1 ? size : Size(size.height,size.width));
+    std::function<void(Node*)> reflow=[&](Node *node) {
+        if (auto *form=dynamic_cast<iTVPBaseForm*>(node)) form->rearrangeLayout();
+        if (auto *list=dynamic_cast<TVPListForm*>(node)) list->rearrangeLayout();
+        if (auto *mask=dynamic_cast<LayerColor*>(node)) mask->setContentSize(size);
+        for (Node *child : node->getChildren()) reflow(child);
+    };
+    for (Node *node : UINode->getChildren()) reflow(node);
+    for (Node *node : getChildren()) if (auto *color=dynamic_cast<LayerColor*>(node)) color->setContentSize(size);
+}
+
 void TVPMainScene::rotateUI() {
 	float rot = UINode->getRotation();
 	if (rot < 1) {
@@ -1894,6 +1926,11 @@ static float _getUIScale() {
 }
 
 float TVPMainScene::getUIScale() {
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+    // Keep desktop controls readable in physical pixels, including 320x180.
+    auto *view=Director::getInstance()->getOpenGLView();
+    return 0.30f / std::max(0.001f, view->getScaleY());
+#endif
 	static float uiscale = _getUIScale();
 	return uiscale;
 }
@@ -2043,10 +2080,20 @@ void TVPMainScene::toggleVirtualMouseCursor() {
 
 Sprite *TVPCreateCUR() {
 	std::string fullPath = FileUtils::getInstance()->fullPathForFilename("default.cur");
+	if (fullPath.empty()) return nullptr;
 	Data buf = FileUtils::getInstance()->getDataFromFile(fullPath);
-
-	tTVPMemoryStream stream(buf.getBytes(), buf.getSize());
-	return TVPLoadCursorCUR(&stream);
+	if (buf.isNull() || buf.getSize() < sizeof(ICONDIR) + sizeof(ICODIREntry)) {
+		cocos2d::log("Kirikinux2: default.cur is missing or truncated; cursor preview disabled");
+		return nullptr;
+	}
+	try {
+		tTVPMemoryStream stream(buf.getBytes(), buf.getSize());
+		return TVPLoadCursorCUR(&stream);
+	} catch (...) {
+		// An optional skin cursor must not abort the settings screen.
+		cocos2d::log("Kirikinux2: could not decode default.cur; cursor preview disabled");
+		return nullptr;
+	}
 }
 
 void TVPMainScene::showVirtualMouseCursor(bool bVisible) {

@@ -8,7 +8,7 @@
 int main() {
   std::error_code ec;
   const auto root = std::filesystem::temp_directory_path(ec) /
-      "kirikiroid2-game-library-test";
+      "kirikinux-game-library-test";
   std::filesystem::remove_all(root, ec);
   std::filesystem::create_directories(root / "one", ec);
   std::filesystem::create_directories(root / "two", ec);

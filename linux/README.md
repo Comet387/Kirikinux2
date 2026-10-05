@@ -2,7 +2,7 @@
 
 # Kirikiroid2 Linux host
 
-This directory provides the native Linux host for the Kirikiroid2 core. A GTK3
+This directory provides the native Linux host for the Kirikinux2 core. A GTK3
 game-library window is the default entry point. It lets users add a game
 directory, choose an XP3/EXE archive, retain recent games, remove entries, drag
 files in, and run the selected startup script. The lower-level X11/SDL2 host
@@ -24,16 +24,16 @@ Oniguruma (`libonig-dev`) enables the TJS2 regular-expression class; the rest
 of the interpreter builds without it.
 
 ```sh
-./build-linux/kirikiroid2-linux --probe game.xp3
-./build-linux/kirikiroid2-linux --list game.xp3
-./build-linux/kirikiroid2-linux --no-window game-directory
-./build-linux/kirikiroid2-linux --eval '1 + 2 * 3'
-./build-linux/kirikiroid2-linux --script scenario.tjs
-./build-linux/kirikiroid2-linux --script 'game.xp3>startup.tjs'
-./build-linux/kirikiroid2-linux --cat 'game.xp3>Config.tjs'
-./build-linux/kirikiroid2-linux --run game-directory
-./build-linux/kirikiroid2-linux --run game.xp3
-./build-linux/kirikiroid2-linux game.xp3
+./build-linux/kirikinux-linux --probe game.xp3
+./build-linux/kirikinux-linux --list game.xp3
+./build-linux/kirikinux-linux --no-window game-directory
+./build-linux/kirikinux-linux --eval '1 + 2 * 3'
+./build-linux/kirikinux-linux --script scenario.tjs
+./build-linux/kirikinux-linux --script 'game.xp3>startup.tjs'
+./build-linux/kirikinux-linux --cat 'game.xp3>Config.tjs'
+./build-linux/kirikinux-linux --run game-directory
+./build-linux/kirikinux-linux --run game.xp3
+./build-linux/kirikinux-linux game.xp3
 ```
 
 The host recognizes raw XP3 files and XP3 data embedded in Windows executables.

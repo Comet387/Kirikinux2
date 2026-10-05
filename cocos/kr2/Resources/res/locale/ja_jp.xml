@@ -70,13 +70,13 @@
     <Item id="menu_global_preference" text="グローバル設定"/>
     <Item id="menu_new_local_pref" text="ﾛｰｶﾙ設定を作成"/>
     <Item id="menu_local_pref" text="ローカル設定"/>
-    <Item id="menu_new_folder" text="新規フォルダ"/>
-    <Item id="menu_about" text="情報"/>
+    <Item id="menu_new_folder" text="ゲームを開く"/>
+    <Item id="menu_about" text="Kirikinux2 について"/>
     <Item id="menu_exit" text="終了"/>
     <Item id="menu_help" text="ヘルプを見る"/>
     <Item id="menu_archive_repack" text="XP3変換/復号化"/>
     <Item id="menu_web_server" text="ﾌｧｲﾙ共有ｻｰﾊﾞ"/>
-    <Item id="about_content" text="パッチ:&#10;https://zeas2.github.io/Kirikiroid2_patch/patch&#10;不具合の報告:&#10;https://github.com/zeas2/Kirikiroid2/issues"/>
+    <Item id="about_content" text="GitHub プロジェクト：&#10;https://github.com/Comet387/kirikinux2&#10;GitHub パッチ一覧：&#10;https://zeas2.github.io/Kirikiroid2_patch/patch&#10;不具合の報告：&#10;https://github.com/Comet387/kirikinux2/issues"/>
     <Item id="about_content_i" text=""/>
     <Item id="sure_to_exit" text="終了してもよろしいですか？"/>
     <Item id="msgbox_yes" text="はい"/>
@@ -123,4 +123,11 @@
 	<Item id="archive_repack_proc_title" text="変換中..."/>
 	<Item id="archive_repack_no_xp3filter" text="現在のパスにxp3filterが見つかりませんが、続行しますか？"/>
 	<Item id="archive_repack_no_xp3" text="XP3アーカイブが見つからないため、中止します。"/>
+    <Item id="menu_open_game" text="ゲームを開く"/>
+    <Item id="open_game_prompt" text="XP3 ファイル、または startup.tjs / XP3 を含むフォルダーを選んでください。"/>
+    <Item id="open_game_folder" text="フォルダーを選択"/>
+    <Item id="open_game_file" text="ファイルを選択"/>
+    <Item id="open_game_confirm" text="開く"/>
+    <Item id="open_game_invalid" text="XP3 ファイル、または startup.tjs / XP3 を含むフォルダーを選んでください。"/>
+    <Item id="open_game_hint" text="ファイルかフォルダーを選んで開始できます。コマンドは不要です。"/>
 </Locale>

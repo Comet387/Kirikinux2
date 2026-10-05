@@ -16,8 +16,8 @@ extern std::vector<std::string> TVPLinuxStartupArgs; // LinuxUtils.cpp, read by 
 
 static void usage(const char *argv0) {
 	printf("usage: %s [--size=WIDTHxHEIGHT] [--fullscreen] [game-dir | archive.xp3 [name=value ...]]\n"
-	       "  without a game the original Kirikiroid2 file selector is shown\n"
-	       "  KIRIKIROID2_GAME_DIR sets the folder the file selector starts in\n", argv0);
+	       "  without a game the original Kirikinux2 file selector is shown\n"
+	       "  KIRIKINUX_GAME_DIR sets the folder the file selector starts in\n", argv0);
 }
 
 int main(int argc, char **argv) {
@@ -44,10 +44,10 @@ int main(int argc, char **argv) {
 	GLContextAttrs attrs = { 8, 8, 8, 8, 24, 8 };
 	cocos2d::GLView::setGLContextAttrs(attrs);
 	cocos2d::GLView *glview = fullscreen
-		? cocos2d::GLViewImpl::createWithFullScreen("Kirikiroid2")
-		: cocos2d::GLViewImpl::createWithRect("Kirikiroid2", cocos2d::Rect(0, 0, width, height));
+		? cocos2d::GLViewImpl::createWithFullScreen("Kirikinux2")
+		: cocos2d::GLViewImpl::createWithRect("Kirikinux2", cocos2d::Rect(0, 0, width, height), 1.f, true);
 	if (!glview) {
-		fprintf(stderr, "kirikiroid2: could not create the OpenGL window\n");
+		fprintf(stderr, "Kirikinux2: could not create the OpenGL window\n");
 		return 1;
 	}
 	cocos2d::Director::getInstance()->setOpenGLView(glview);

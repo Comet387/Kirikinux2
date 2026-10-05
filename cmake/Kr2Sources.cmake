@@ -60,6 +60,7 @@ list(REMOVE_ITEM KR2_CORE_SOURCES ${KR2_CORE_ANDROID_EXCLUDES} ${KR2_CORE_LINUX_
 # environ/android/*.cpp is replaced by the Linux host; visual/ARM + sound/ARM
 # (the Android NEON module) by no-op entry points.
 set(KR2_PLATFORM_SOURCES
+  ${KR2_ROOT}/platform/linux/LinuxHost.cpp
   ${KR2_ROOT}/platform/linux/LinuxUtils.cpp
   ${KR2_ROOT}/platform/linux/LinuxDialogs.cpp
   ${KR2_ROOT}/platform/linux/LinuxFeatureStubs.cpp

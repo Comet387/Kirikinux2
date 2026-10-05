@@ -39,9 +39,9 @@
     <Item id="preference_ogl_texsize_16384" text="16384"/>
     <Item id="preference_mem_limit" text="Attempt to Limit Memory Usage"/>
     <Item id="preference_mem_unlimited" text="Unlimited"/>
-    <Item id="preference_mem_high" text="High Memory(<300MB)"/>
-    <Item id="preference_mem_medium" text="Medium Memory(<200MB)"/>
-    <Item id="preference_mem_low" text="Low Memory(<100MB)"/>
+    <Item id="preference_mem_high" text="High Memory(&lt;300MB)"/>
+    <Item id="preference_mem_medium" text="Medium Memory(&lt;200MB)"/>
+    <Item id="preference_mem_low" text="Low Memory(&lt;100MB)"/>
     <Item id="preference_show_fps" text="Show FPS"/>
     <Item id="preference_fps_limit" text="FPS Limit"/>
     <Item id="preference_hide_loading_ad" text="Hide Ads while loading"/>
@@ -70,13 +70,13 @@
     <Item id="menu_global_preference" text="Global Pref."/>
     <Item id="menu_new_local_pref" text="New Individual Pref."/>
     <Item id="menu_local_pref" text="Individual Pref."/>
-    <Item id="menu_new_folder" text="New Folder"/>
-    <Item id="menu_about" text="About"/>
+    <Item id="menu_new_folder" text="Open game"/>
+    <Item id="menu_about" text="About Kirikinux2"/>
     <Item id="menu_exit" text="Exit"/>
     <Item id="menu_help" text="View Help"/>
     <Item id="menu_archive_repack" text="Conv/Dec XP3"/>
     <Item id="menu_web_server" text="Web File Server"/>
-    <Item id="about_content" text="Find patch here:&#10https://zeas2.github.io/Kirikiroid2_patch/patch&#10Report bugs here:&#10;https://github.com/zeas2/Kirikiroid2/issues"/>
+    <Item id="about_content" text="Project on GitHub:&#10;https://github.com/Comet387/kirikinux2&#10;Find patches on GitHub:&#10;https://zeas2.github.io/Kirikiroid2_patch/patch&#10;Report issues:&#10;https://github.com/Comet387/kirikinux2/issues"/>
     <Item id="about_content_i" text=""/>
     <Item id="sure_to_exit" text="Sure to exit?"/>
     <Item id="msgbox_yes" text="Yes"/>
@@ -123,4 +123,11 @@
 	<Item id="archive_repack_proc_title" text="Converting..."/>
 	<Item id="archive_repack_no_xp3filter" text="No xp3filter found in current path. Continue ?"/>
 	<Item id="archive_repack_no_xp3" text="No xp3 archvie found, stop."/>
+    <Item id="menu_open_game" text="Open game"/>
+    <Item id="open_game_prompt" text="Choose an XP3 file or a game folder containing startup.tjs / XP3."/>
+    <Item id="open_game_folder" text="Choose game folder"/>
+    <Item id="open_game_file" text="Choose game file"/>
+    <Item id="open_game_confirm" text="Open"/>
+    <Item id="open_game_invalid" text="Choose an XP3 file or a folder containing startup.tjs / XP3."/>
+    <Item id="open_game_hint" text="Choose a file or folder to play. No command line is required."/>
 </Locale>

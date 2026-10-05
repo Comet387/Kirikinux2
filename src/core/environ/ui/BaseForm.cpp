@@ -1,4 +1,6 @@
 #include "BaseForm.h"
+#include "DesktopScroll.h"
+#include "ui/UIScrollView.h"
 #include "cocos2d.h"
 #include "cocostudio/ActionTimeline/CSLoader.h"
 #include "Application.h"
@@ -29,7 +31,7 @@ cocos2d::Node * NodeMap::findController<cocos2d::Node>(const std::string &name, 
 		std::string warntext("Node ");
 		warntext += name.c_str();
 		warntext += " not exist in ";
-		warntext += FileName;
+		warntext += FileName ? FileName : "<unknown UI>";
 		TVPShowSimpleMessageBox(warntext, "Fail to load ui");
 	}
 	return nullptr;
@@ -49,7 +51,7 @@ void NodeMap::onLoadError(const std::string &name) const
 	std::string warntext("Node ");
 	warntext += name.c_str();
 	warntext += " wrong controller type in ";
-	warntext += FileName;
+	warntext += FileName ? FileName : "<unknown UI>";
 	TVPShowSimpleMessageBox(warntext, "Fail to load ui");
 }
 
@@ -72,6 +74,20 @@ Node* CSBReader::Load(const char *filename) {
 	if (!ret) {
 		TVPShowSimpleMessageBox(filename, "Fail to load ui file");
 	}
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+	// Old CSLoader layouts may fall back to a Latin system font. Use the
+	// packaged CJK face by absolute path for every desktop UI label/button.
+	const std::string font = FileUtils::getInstance()->fullPathForFilename("DroidSansFallback.ttf");
+	if (!font.empty()) {
+		std::function<void(Node*)> applyFont = [&](Node *node) {
+			if (auto *text = dynamic_cast<Text*>(node)) text->setFontName(font);
+			if (auto *button = dynamic_cast<Button*>(node)) button->setTitleFontName(font);
+            if (auto *scroll = dynamic_cast<ui::ScrollView*>(node)) TVPEnableDesktopScroll(scroll);
+			for (Node *child : node->getChildren()) applyFont(child);
+		};
+		if (ret) applyFont(ret);
+	}
+#endif
 	return ret;
 }
 

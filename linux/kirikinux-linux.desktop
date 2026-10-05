@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Kirikinux2 (Linux)
+Comment=Kirikinux2 native Linux host
+Exec=kirikinux-linux %U
+Icon=kirikinux-linux
+Terminal=false
+Categories=Game;Emulator;
+MimeType=application/x-kirikiri-xp3;

@@ -1,0 +1,19 @@
+#!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-only
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
+runtime_dir=$(CDPATH= cd -- "$script_dir/@KR2_REL_RUNTIME@" && pwd) || exit 1
+# Preserve the caller's environment for external desktop programs.
+for name in LD_LIBRARY_PATH LD_PRELOAD FONTCONFIG_FILE FONTCONFIG_PATH GTK_PATH GTK_MODULES GIO_EXTRA_MODULES; do
+  if printenv "$name" >/dev/null 2>&1; then
+    value=$(printenv "$name")
+    export "KIRIKINUX_HOST_$name=$value"
+  else
+    unset "KIRIKINUX_HOST_$name"
+  fi
+done
+export KIRIKINUX_HOST_ENV_SAVED=1
+export LD_LIBRARY_PATH="$runtime_dir/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+# The bundled Fontconfig cannot parse newer host configuration or GTK modules.
+export FONTCONFIG_FILE="$runtime_dir/Resources/fonts.conf"
+unset FONTCONFIG_PATH GTK_PATH GTK_MODULES GIO_EXTRA_MODULES
+exec "$runtime_dir/kirikinux" "$@"

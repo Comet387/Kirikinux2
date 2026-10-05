@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+if (!debugWindowEnabled) throw "Game patch debugger flag was overwritten";
+Debug.message("KIRIKINUX_STARTUP_COMPAT_PATCH_OVERRIDE_OK");
+var regressionWindow = new Window();
+regressionWindow.caption = "Kirikinux2 startup regression";
+regressionWindow.width = 480;
+regressionWindow.height = 300;
+regressionWindow.visible = true;

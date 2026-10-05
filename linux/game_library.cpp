@@ -24,19 +24,19 @@ std::filesystem::path GameLibrary::default_storage_path() {
   }
   if (const char *xdg_path = std::getenv("XDG_CONFIG_HOME")) {
     if (*xdg_path)
-      return std::filesystem::path(xdg_path) / "kirikiroid2" /
+      return std::filesystem::path(xdg_path) / "kirikinux" /
              "recent-games.txt";
   }
   if (const char *home_path = std::getenv("HOME")) {
     if (*home_path)
-      return std::filesystem::path(home_path) / ".config" / "kirikiroid2" /
+      return std::filesystem::path(home_path) / ".config" / "kirikinux" /
              "recent-games.txt";
   }
   std::error_code ec;
   std::filesystem::path fallback = std::filesystem::temp_directory_path(ec);
   if (ec) fallback = std::filesystem::current_path(ec);
   if (ec) fallback = ".";
-  return fallback / "kirikiroid2-recent-games.txt";
+  return fallback / "kirikinux-recent-games.txt";
 }
 
 std::string GameLibrary::normalize_path(const std::string &path) {
@@ -133,7 +133,7 @@ bool GameLibrary::save(std::string &error) const {
       error = "cannot write game library: " + temporary.string();
       return false;
     }
-    output << "# Kirikiroid2 recent games v1\n";
+    output << "# kirikinux recent games v1\n";
     for (const std::string &game : games_) output << std::quoted(game) << '\n';
     output.flush();
     if (!output) {

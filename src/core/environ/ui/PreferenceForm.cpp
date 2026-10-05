@@ -17,6 +17,23 @@
 using namespace cocos2d;
 using namespace cocos2d::ui;
 
+void TVPPreferenceForm::rearrangeLayout() {
+    iTVPBaseForm::rearrangeLayout();
+    if (!PrefList) return;
+    for (Widget *cell : PrefList->getItems()) {
+        Size size=cell->getContentSize();size.width=PrefList->getContentSize().width;
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+        size.width=std::max(1.f,size.width-16.f/0.30f);
+#endif
+        cell->setContentSize(size);
+        for (Node *child : cell->getChildren()) {
+            child->setContentSize(size);ui::Helper::doLayout(child);
+        }
+    }
+    PrefList->setGravity(ListView::Gravity::LEFT);
+    PrefList->requestDoLayout();
+}
+
 void TVPPreferenceForm::initPref(const tPreferenceScreen *config) {
 	Config = config;
 	PrefList->removeAllItems();
@@ -30,6 +47,7 @@ void TVPPreferenceForm::initPref(const tPreferenceScreen *config) {
 	Widget *nullcell = new Widget();
 	nullcell->setContentSize(Size(PrefList->getContentSize().width, 200));
 	PrefList->pushBackCustomItem(nullcell);
+    rearrangeLayout();
 }
 
 void TVPPreferenceForm::bindBodyController(const NodeMap &allNodes) {
@@ -303,7 +321,7 @@ void TVPCustomPreferenceForm::initFromInfo(const std::string &tid_title, int cou
 			_setter(i, val);
 		};
 		item->autorelease();
-		item->initFromInfo(i, size, nullptr);
+		item->initFromInfo(i, size, "");
 		_listview->pushBackCustomItem(item);
 	}
 	Widget *nullcell = new Widget();
@@ -346,7 +364,7 @@ void tPreferenceItemCursorSlider::initController(const NodeMap &allNodes) {
 	}
 	_icon = allNodes.findController("icon");
 	_cursor = TVPCreateCUR();
-	_icon->addChild(_cursor);
+	if (_cursor) _icon->addChild(_cursor);
 	_icon->setScale(_curScaleConv(_slider->getPercent() / 100.f));
 	_slider->addEventListener([this](Ref* p, Slider::EventType e) {
 		if (e == Slider::EventType::ON_PERCENTAGE_CHANGED) {
@@ -366,7 +384,7 @@ void tPreferenceItemCursorSlider::onEnter() {
 	for (Node *p = _icon->getParent(); p; p = p->getParent()) {
 		scale *= p->getScale();
 	}
-	_cursor->setScale(_cursor->getScale() / scale);
+	if (_cursor && scale > 0) _cursor->setScale(_cursor->getScale() / scale);
 }
 
 const char* tPreferenceItemTextSlider::getUIFileName() const  {
@@ -543,4 +561,3 @@ void tPreferenceItemKeyMap::initData(int k, int v, int idx, const cocos2d::Size 
 	sprintf(buf, "%d <=> %d", k, v);
 	initFromInfo(idx, size, buf);
 }
-

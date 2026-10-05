@@ -1,6 +1,6 @@
 # platform/linux/compat
 
-Headers the original sources include but the public Kirikiroid2 tree does not
+Headers the original sources include but the public Kirikinux2 tree does not
 contain (or that live at a different path on Linux distributions). This
 directory is first on the include path of the Linux build only, so no file in
 `src/` had to change for them.

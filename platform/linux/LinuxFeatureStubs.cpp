@@ -12,7 +12,7 @@
 // environ/XP3ArchiveRepack.cpp + environ/ui/XP3RepackForm.cpp need the 7-Zip C++
 // encoder sources that zeas2 kept in base/7zip (not published).
 void TVPProcessXP3Repack(const std::string &dir) {
-	TVPShowSimpleMessageBox(ttstr("XP3 repack is not available in the Linux build yet."), ttstr("Kirikiroid2"));
+	TVPShowSimpleMessageBox(ttstr("XP3 repack is not available in the Linux build yet."), ttstr("Kirikinux2"));
 }
 
 #ifndef KR2_HAVE_BPG // libbpg is not packaged by distributions

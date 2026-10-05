@@ -45,7 +45,18 @@ if [ ! -f "$TP/7zip/C/7z.h" ]; then
   rm -rf "$TP/7zip" "$TP/p7zip_16.02"
   tar --no-same-owner -xjf "$DL/p7zip_16.02_src_all.tar.bz2" -C "$TP"
   mv "$TP/p7zip_16.02" "$TP/7zip"
-  cp "$ROOT/third_party/patches/p7zip/"* "$TP/7zip/C/"
+  # Keep the patch files in a source-deliverable path. The historical
+  # third_party/ location is excluded from source packages and may be absent
+  # in clean CI checkouts made from those packages.
+  p7zip_patch_dir="$ROOT/platform/linux/compat/p7zip"
+  if [ ! -d "$p7zip_patch_dir" ]; then
+    p7zip_patch_dir="$ROOT/third_party/patches/p7zip"
+  fi
+  compgen -G "$p7zip_patch_dir/*" >/dev/null || {
+    echo "missing p7zip compatibility files: $p7zip_patch_dir" >&2
+    exit 1
+  }
+  cp "$p7zip_patch_dir/"* "$TP/7zip/C/"
 fi
 
 if [ ! -f /usr/include/unrar/dll.hpp ] && [ ! -f "$TP/unrar/dll.hpp" ]; then

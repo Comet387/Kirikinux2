@@ -273,6 +273,7 @@ public:
 	tjs_uint64 ReadI64LE(); // reads little-endian integers
 	tjs_uint32 ReadI32LE();
 	tjs_uint16 ReadI16LE();
+	tjs_uint8 ReadI8LE(); // Kirikinux2: used by ported psbfile/motionplayer
 };
 //---------------------------------------------------------------------------
 

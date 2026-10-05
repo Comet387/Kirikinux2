@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Re-create, on a stock cocos2d-x 3.17.2 tree, the API differences of the
-privately modified cocos2d-x zeas2 built Kirikiroid2 with (that vendor tree was
+privately modified cocos2d-x zeas2 built kirikinux with (that vendor tree was
 never published).  Every change only widens an API, nothing stock code relies on
 changes.  Idempotent; run by CMakeLists.txt at configure time.
 
@@ -29,7 +29,7 @@ def scroll_view(s):
         if re.search(r"virtual\s+Vec2\s+%s\s*\(\s*\)" % name, s):
             continue
         s, n = re.subn(r"(?m)^(\s*)Vec2\s+%s\s*\(\s*\)\s*;" % name,
-                       r"\1virtual Vec2 %s(); // %s overridden by Kirikiroid2 (MainScene.cpp)" % (name, MARK),
+                       r"\1virtual Vec2 %s(); // %s overridden by kirikinux (MainScene.cpp)" % (name, MARK),
                        s, count=1)
         if n != 1:
             return None
@@ -48,7 +48,7 @@ def image(s):
     if not m:
         return None
     ind = m.group(1)
-    add = (f"{ind}// {MARK} Kirikiroid2 passes the pixel format (zeas2's cocos2d-x); raw data is RGBA8888 anyway\n"
+    add = (f"{ind}// {MARK} kirikinux passes the pixel format (zeas2's cocos2d-x); raw data is RGBA8888 anyway\n"
            f"{ind}bool initWithRawData(const unsigned char * data, ssize_t dataLen, int width, int height,\n"
            f"{ind}                     Texture2D::PixelFormat format, bool preMulti = false)\n"
            f"{ind}{{ return format == Texture2D::PixelFormat::RGBA8888 && initWithRawData(data, dataLen, width, height, 8, preMulti); }}\n")

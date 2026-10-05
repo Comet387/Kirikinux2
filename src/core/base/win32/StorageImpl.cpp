@@ -512,8 +512,16 @@ ttstr TVPGetAppPath()
 	static ttstr exepath(TVPExtractStoragePath(TVPNormalizeStorageName(ExePath())));
 	return exepath;
 #endif
-	static ttstr apppath(TVPExtractStoragePath(TVPProjectDir));
-	return apppath;
+    // Kirikinux2 (AGPL-3.0-only): directory games keep their own patch/fonts.
+    // Derive from the original local selection, before/after archive mounting,
+    // rather than caching the parent of a directory without a trailing slash.
+    ttstr apppath(TVPNormalizeStorageName(ExePath()));
+    if (TVPCheckExistentLocalFolder(ExePath())) {
+        if (apppath.IsEmpty() || apppath[apppath.GetLen() - 1] != TJS_W('/'))
+            apppath += TJS_W("/");
+        return apppath;
+    }
+    return TVPExtractStoragePath(apppath);
 }
 //---------------------------------------------------------------------------
 

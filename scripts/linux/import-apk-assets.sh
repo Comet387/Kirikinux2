@@ -4,7 +4,7 @@
 # Use this if the build-time .csd -> .csb conversion (kr2_csd2csb) misbehaves.
 #   import-apk-assets.sh Kirikiroid2_1.3.9.apk [build-linux/bin/Resources]
 set -euo pipefail
-apk="${1:?usage: $0 Kirikiroid2_1.3.9.apk [Resources dir]}"
+apk="${1:?usage: $0 kirikinux_1.3.9.apk [Resources dir]}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 dest="${2:-$ROOT/build-linux/bin/Resources}"
 tmp="$(mktemp -d)"

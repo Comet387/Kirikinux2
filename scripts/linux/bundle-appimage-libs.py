@@ -27,7 +27,7 @@ def main():
     ap.add_argument("--patchelf", default="patchelf")
     args = ap.parse_args()
     runtime = args.runtime.resolve()
-    engine = runtime / "kirikiroid2"
+    engine = runtime / "kirikinux"
     libdir = runtime / "lib"
     libdir.mkdir(exist_ok=True)
     if not engine.is_file():

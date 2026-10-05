@@ -2,7 +2,7 @@
 """Launch the original engine on Xvfb, capture real X11 frames and inject input.
 
 Requires Xvfb, libX11 and libXtst. No game resources are created or substituted.
-Example: gui-smoke.py --engine build-linux/bin/kirikiroid2 --game /path/data.xp3
+Example: gui-smoke.py --engine build-linux/bin/kirikinux2 --game /path/data.xp3
 Actions: --action click:5:640:360 --action key:10:space
 Use --action focus:9 before keyboard input when Xvfb has no window manager.
 """
@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import shutil
 import struct
 import subprocess
 import time
@@ -51,13 +52,21 @@ class Display:
                                      C.POINTER(C.c_ulong), C.POINTER(C.POINTER(C.c_ulong)),
                                      C.POINTER(C.c_uint)]
         self.x.XFetchName.argtypes = [C.c_void_p, C.c_ulong, C.POINTER(C.c_void_p)]
+        self.x.XInternAtom.argtypes = [C.c_void_p, C.c_char_p, C.c_int]
+        self.x.XInternAtom.restype = C.c_ulong
+        self.x.XGetWindowProperty.argtypes = [C.c_void_p, C.c_ulong, C.c_ulong, C.c_long, C.c_long,
+            C.c_int, C.c_ulong, C.POINTER(C.c_ulong), C.POINTER(C.c_int),
+            C.POINTER(C.c_ulong), C.POINTER(C.c_ulong), C.POINTER(C.c_void_p)]
         self.x.XSetInputFocus.argtypes = [C.c_void_p, C.c_ulong, C.c_int, C.c_ulong]
         self.x.XRaiseWindow.argtypes = [C.c_void_p, C.c_ulong]
+        self.x.XResizeWindow.argtypes = [C.c_void_p, C.c_ulong, C.c_uint, C.c_uint]
         self.x.XFree.argtypes = [C.c_void_p]
         self.x.XStringToKeysym.argtypes = [C.c_char_p]
         self.x.XStringToKeysym.restype = C.c_ulong
         self.x.XKeysymToKeycode.argtypes = [C.c_void_p, C.c_ulong]
         self.x.XKeysymToKeycode.restype = C.c_uint
+        self.x.XGetKeyboardMapping.argtypes = [C.c_void_p, C.c_uint, C.c_int, C.POINTER(C.c_int)]
+        self.x.XGetKeyboardMapping.restype = C.POINTER(C.c_ulong)
         self.t.XTestFakeMotionEvent.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_int, C.c_ulong]
         self.t.XTestFakeButtonEvent.argtypes = [C.c_void_p, C.c_uint, C.c_int, C.c_ulong]
         self.t.XTestFakeKeyEvent.argtypes = [C.c_void_p, C.c_uint, C.c_int, C.c_ulong]
@@ -90,7 +99,8 @@ class Display:
 
     def action(self, parts):
         result = None
-        if parts[0] == "focus" and len(parts) == 2:
+        if parts[0] in ("focus", "resize") and len(parts) in (2, 3, 4):
+            target_title = parts[2] if parts[0] == "focus" and len(parts) == 3 else "Kirikinux2"
             root, parent, count = C.c_ulong(), C.c_ulong(), C.c_uint()
             children = C.POINTER(C.c_ulong)()
             if not self.x.XQueryTree(self.d, self.root, C.byref(root), C.byref(parent),
@@ -99,26 +109,81 @@ class Display:
             try:
                 for i in range(count.value):
                     name = C.c_void_p()
-                    if self.x.XFetchName(self.d, children[i], C.byref(name)) and name.value:
+                    atom = self.x.XInternAtom(self.d, b"_NET_WM_NAME", 0)
+                    kind, size, length, remaining = C.c_ulong(), C.c_int(), C.c_ulong(), C.c_ulong()
+                    self.x.XGetWindowProperty(self.d, children[i], atom, 0, 1024, 0, 0,
+                        C.byref(kind), C.byref(size), C.byref(length), C.byref(remaining), C.byref(name))
+                    if not length.value:
+                        if name:
+                            self.x.XFree(name)
+                        name = C.c_void_p()
+                        self.x.XFetchName(self.d, children[i], C.byref(name))
+                    if name.value:
                         try:
                             title = C.string_at(name).decode(errors="replace")
                         finally:
                             self.x.XFree(name)
-                        if title == "Kirikiroid2":
+                        if title == target_title:
                             self.x.XRaiseWindow(self.d, children[i])
                             self.x.XSetInputFocus(self.d, children[i], 2, 0)
+                            if parts[0] == "resize":
+                                self.x.XResizeWindow(self.d, children[i], int(parts[2]), int(parts[3]))
                             result = {"focused_window": int(children[i]), "title": title}
                             break
                 if result is None:
-                    raise RuntimeError("Kirikiroid2 X11 window not found")
+                    raise RuntimeError("X11 window not found: " + target_title)
             finally:
                 if children:
                     self.x.XFree(children)
+        elif parts[0] == "drag" and len(parts) == 6:
+            x0,y0,x1,y1=map(int,parts[2:])
+            self.t.XTestFakeMotionEvent(self.d,-1,x0,y0,0)
+            self.t.XTestFakeButtonEvent(self.d,1,1,0);self.x.XFlush(self.d);time.sleep(.1)
+            for i in range(1,11):
+                self.t.XTestFakeMotionEvent(self.d,-1,x0+(x1-x0)*i//10,y0+(y1-y0)*i//10,0)
+                self.x.XFlush(self.d);time.sleep(.03)
+            self.t.XTestFakeButtonEvent(self.d,1,0,0)
+        elif parts[0] == "wheel" and len(parts) == 5:
+            self.t.XTestFakeMotionEvent(self.d, -1, int(parts[2]), int(parts[3]), 0)
+            for _ in range(abs(int(parts[4]))):
+                button = 5 if int(parts[4]) > 0 else 4
+                self.t.XTestFakeButtonEvent(self.d, button, 1, 0)
+                self.t.XTestFakeButtonEvent(self.d, button, 0, 0)
         elif parts[0] in ("click", "rightclick") and len(parts) == 4:
             button = 1 if parts[0] == "click" else 3
             self.t.XTestFakeMotionEvent(self.d, -1, int(parts[2]), int(parts[3]), 0)
             self.t.XTestFakeButtonEvent(self.d, button, 1, 0)
             self.t.XTestFakeButtonEvent(self.d, button, 0, 0)
+        elif parts[0] in ("keydown", "keyup") and len(parts) == 3:
+            key = self.x.XKeysymToKeycode(self.d, self.x.XStringToKeysym(parts[2].encode()))
+            if not key:
+                raise ValueError("Unknown key: " + parts[2])
+            self.t.XTestFakeKeyEvent(self.d, key, parts[0] == "keydown", 0)
+        elif parts[0] == "type" and len(parts) == 3:
+            # Real keyboard input to the native file chooser, using ASCII paths.
+            # Unicode filename handling is covered by desktop_dialogs.cpp.
+            shift = self.x.XKeysymToKeycode(self.d, self.x.XStringToKeysym(b"Shift_L"))
+            for char in parts[2]:
+                sym = ord(char)
+                if sym > 127:
+                    raise ValueError("type action requires ASCII; use native chooser Unicode test")
+                key = self.x.XKeysymToKeycode(self.d, sym)
+                if not key:
+                    raise ValueError("Unmapped character: " + char)
+                count = C.c_int()
+                mapping = self.x.XGetKeyboardMapping(self.d, key, 1, C.byref(count))
+                try:
+                    shifted = count.value > 1 and mapping[1] == sym and mapping[0] != sym
+                finally:
+                    self.x.XFree(mapping)
+                if shifted:
+                    self.t.XTestFakeKeyEvent(self.d, shift, 1, 0)
+                self.t.XTestFakeKeyEvent(self.d, key, 1, 0)
+                self.t.XTestFakeKeyEvent(self.d, key, 0, 0)
+                if shifted:
+                    self.t.XTestFakeKeyEvent(self.d, shift, 0, 0)
+                self.x.XFlush(self.d)
+                time.sleep(0.015)
         elif parts[0] == "key" and len(parts) == 3:
             key = self.x.XKeysymToKeycode(self.d, self.x.XStringToKeysym(parts[2].encode()))
             if not key:
@@ -140,6 +205,7 @@ class Display:
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--engine", required=True, type=Path)
+    ap.add_argument("--engine-arg", action="append", default=[])
     ap.add_argument("--game", type=Path)
     ap.add_argument("--output", type=Path, default=Path("gui-smoke"))
     ap.add_argument("--xvfb", default="Xvfb")
@@ -171,7 +237,13 @@ def main():
     report = {"engine": str(args.engine.resolve()), "game": str(args.game.resolve()) if args.game else None,
               "captures": [], "actions": []}
     if args.game:
-        report["game_sha256"] = hashlib.sha256(args.game.read_bytes()).hexdigest()
+        if args.game.is_file():
+            report["game_sha256"] = hashlib.sha256(args.game.read_bytes()).hexdigest()
+        else:
+            report["game_files_sha256"] = {
+                str(p.relative_to(args.game)): hashlib.sha256(p.read_bytes()).hexdigest()
+                for p in sorted(args.game.rglob("*")) if p.is_file()
+            }
     try:
         with (out / "xvfb.log").open("w") as xlog, (out / "engine.log").open("w") as elog:
             server = subprocess.Popen([args.xvfb, f":{args.display}", "-screen", "0", "1280x720x24",
@@ -189,12 +261,22 @@ def main():
             else:
                 raise RuntimeError("Xvfb did not become ready")
             display = Display(env["DISPLAY"])
-            glx = subprocess.run([os.environ.get("KR2_GLXINFO", "glxinfo"), "-B"], env=env,
-                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=15)
-            (out / "glxinfo.log").write_text(glx.stdout)
-            if glx.returncode:
-                raise RuntimeError("OpenGL probe failed; see glxinfo.log")
-            cmd = [str(args.engine.resolve())]
+            # glxinfo is useful diagnostics, but it is not required to launch
+            # the engine.  Minimal CI/Xvfb images often omit mesa-utils even
+            # though the X server and GL loader are available.  Continue in
+            # that case and leave an explicit record in the report.
+            glxinfo = os.environ.get("KR2_GLXINFO", "glxinfo")
+            if shutil.which(glxinfo):
+                glx = subprocess.run([glxinfo, "-B"], env=env,
+                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                     text=True, timeout=15)
+                (out / "glxinfo.log").write_text(glx.stdout)
+                report["glxinfo"] = {"command": glxinfo, "returncode": glx.returncode}
+                if glx.returncode:
+                    raise RuntimeError("OpenGL probe failed; see glxinfo.log")
+            else:
+                report["glxinfo"] = {"command": glxinfo, "skipped": "not installed"}
+            cmd = [str(args.engine.resolve())] + args.engine_arg
             if args.game:
                 cmd.append(str(args.game.resolve()))
             engine = subprocess.Popen(cmd, env=env, stdout=elog, stderr=subprocess.STDOUT)

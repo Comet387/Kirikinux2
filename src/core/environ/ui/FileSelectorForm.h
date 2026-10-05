@@ -8,7 +8,8 @@ public:
 	virtual ~TVPListForm();;
 	static TVPListForm * create(const std::vector<cocos2d::ui::Widget*> &cells);
 
-	void initFromInfo(const std::vector<cocos2d::ui::Widget*> &cells);
+	bool initFromInfo(const std::vector<cocos2d::ui::Widget*> &cells);
+    void rearrangeLayout();
 
 	void show(); // for background fading
 
@@ -107,11 +108,17 @@ protected:
 		}
 
 		void initFromFile(const char * filename, float width);
+		void setWidth(float width);
 
 		void setInfo(int idx, const FileInfo &info, bool selected, bool showSelect);
 
 		void reset() {
 			_set = false;
+			if (_hitTarget) {
+				_hitTarget->unschedule("long_press");
+				_hitTarget->unschedule("delay_call");
+				_hitTarget->setHighlighted(false);
+			}
 		}
 
 		bool isSet() {
@@ -130,6 +137,7 @@ protected:
 		cocos2d::ui::Text *FileNameNode;
 		cocos2d::Node *DirIcon, *_root, *BgOdd, *BgEven;
 		cocos2d::ui::CheckBox *SelectBox;
+		cocos2d::ui::Widget *_hitTarget = nullptr;
 		FileItemCell *_owner;
 	};
 	cocos2d::RefPtr<FileItemCellImpl> CellTemplateForSize;

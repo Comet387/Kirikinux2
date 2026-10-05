@@ -58,3 +58,6 @@ void TVP_utime(const char *name, time_t modtime);
 
 void TVPSendToOtherApp(const std::string &filename);
 std::string TVPGetCurrentLanguage();
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+std::string TVPSelectGamePath(const std::string &initialPath);
+#endif

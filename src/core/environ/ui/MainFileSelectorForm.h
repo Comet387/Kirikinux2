@@ -9,6 +9,8 @@ class TVPMainFileSelectorForm : public TVPBaseFileSelectorForm {
 	typedef TVPBaseFileSelectorForm inherit;
 public:
 	virtual void bindBodyController(const NodeMap &allNodes) override;
+    virtual void rearrangeLayout() override;
+    bool acceptsDesktopScroll(cocos2d::Node *node);
 
 	void show();
 
@@ -30,6 +32,8 @@ protected:
 	void doStartup(const std::string &path);
 
 	void showMenu(cocos2d::Ref*);
+    void layoutDesktopMenu(bool shown);
+	void openGame();
 
 	void hideMenu(cocos2d::Ref*);
 
@@ -66,6 +70,7 @@ protected:
 		cocos2d::ui::Text* _prefix, *_path, *_file;
 		cocos2d::Node *_panel_delete, *_root = nullptr;
 		std::string _fullpath;
+		std::string _displayName;
 	};
 
 	void RemoveHistoryCell(cocos2d::Ref*, HistoryCell* cell);
@@ -74,7 +79,7 @@ protected:
 	cocos2d::ui::Widget *_touchHideMenu;
 	cocos2d::ui::ListView *_menuList, *_historyList = nullptr;
 	cocos2d::LayerColor* _mask;
-	cocos2d::Node *_menu, *_fileList = nullptr;
+	cocos2d::Node *_menu, *_fileList = nullptr, *_browserRoot = nullptr;
 	cocos2d::Node *newLocalPref, *localPref;
 	cocos2d::Size sizeNewLocalPref, sizeLocalPref;
 };

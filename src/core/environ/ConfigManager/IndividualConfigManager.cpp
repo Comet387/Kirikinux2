@@ -3,7 +3,8 @@
 #include "LocaleConfigManager.h"
 #include "Platform.h"
 
-#define FILENAME "Kirikiroid2Preference.xml"
+#define FILENAME "kirikinuxPreference.xml"
+#define LEGACY_FILENAME "Kirikiroid2Preference.xml"
 
 IndividualConfigManager* IndividualConfigManager::GetInstance() {
 	static IndividualConfigManager instance;
@@ -24,7 +25,8 @@ void IndividualConfigManager::Clear()
 
 bool IndividualConfigManager::CheckExistAt(const std::string &folder) {
 	std::string fullpath = folder + "/" FILENAME;
-	return cocos2d::FileUtils::getInstance()->isFileExist(fullpath);
+	return cocos2d::FileUtils::getInstance()->isFileExist(fullpath) ||
+		cocos2d::FileUtils::getInstance()->isFileExist(folder + "/" LEGACY_FILENAME);
 }
 
 bool IndividualConfigManager::CreatePreferenceAt(const std::string &folder) {
@@ -51,7 +53,15 @@ bool IndividualConfigManager::UsePreferenceAt(const std::string &folder)
 	std::string fullpath = folder + "/" FILENAME;
 	if (CurrentPath == fullpath) return true;
 	Clear();
-	if (!cocos2d::FileUtils::getInstance()->isFileExist(fullpath)) return false;
+	if (!cocos2d::FileUtils::getInstance()->isFileExist(fullpath)) {
+		const std::string legacy = folder + "/" LEGACY_FILENAME;
+		if (!cocos2d::FileUtils::getInstance()->isFileExist(legacy)) return false;
+		CurrentPath = legacy;
+		Initialize();
+		CurrentPath = fullpath;
+		ConfigUpdated = true; // next save writes the migrated name, preserving the old file
+		return true;
+	}
 	CurrentPath = fullpath;
 	Initialize();
 	return true;

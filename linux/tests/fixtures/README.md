@@ -29,8 +29,8 @@ Direct invocation:
 
 ```sh
 python3 linux/tests/run_external_xp3.py \
-  --binary build-linux/kirikiroid2-linux \
-  --xp3 ../kirikiroid2_fork3/_testdata/data.xp3 \
+  --binary build-linux/kirikinux-linux \
+  --xp3 ../kirikinux_fork3/_testdata/data.xp3 \
   --minimum layer
 ```
 
@@ -38,7 +38,7 @@ CMake/CTest invocation:
 
 ```sh
 cmake -S linux -B build-linux \
-  -DKRKR2_EXTERNAL_XP3="$PWD/../kirikiroid2_fork3/_testdata/data.xp3"
+  -DKRKR2_EXTERNAL_XP3="$PWD/../kirikinux_fork3/_testdata/data.xp3"
 cmake --build build-linux
 ctest --test-dir build-linux -L external --output-on-failure
 ```

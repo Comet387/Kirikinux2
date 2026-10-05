@@ -2,3 +2,15 @@
 var values = [2, 3, 5];
 var product = values[0] * values[1] * values[2];
 if (product != 30) throw "TJS2 smoke test failed";
+
+var foreachDictionary = %[ first:2, second:3 ];
+var foreachSum = 0;
+Scripts.foreach(foreachDictionary, function(key, value) { foreachSum += value; });
+if (foreachSum != 5) throw "Scripts.foreach dictionary traversal failed";
+var foreachArray = [4, 5];
+var foreachKeys = "";
+Scripts.foreach(foreachArray, function(key, value) { foreachKeys += key; });
+if (foreachKeys != "01") throw "Scripts.foreach array traversal failed";
+
+Plugins.link("motionplayer.dll");
+if (Motion.Player.useD3D != 0) throw "Linux Motion D3D compatibility was not installed";

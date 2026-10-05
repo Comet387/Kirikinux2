@@ -18,7 +18,14 @@ jobs:
           cmake -S tests/linux -B build-components -G Ninja -DKR2_COMPONENT_SANITIZERS=OFF
           cmake --build build-components --parallel 2
           ctest --test-dir build-components --output-on-failure
-  original-core:
+      - name: Upload components workspace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: original-core-components
+          path: build-components/
+          if-no-files-found: warn
+  original-core-build:
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     steps:
@@ -38,45 +45,84 @@ jobs:
           curl -fL --retry 3 https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -o packaging-tools/appimagetool.AppImage
           chmod +x packaging-tools/appimagetool.AppImage
           APPIMAGE_EXTRACT_AND_RUN=1 APPIMAGETOOL="$PWD/packaging-tools/appimagetool.AppImage" ./scripts/linux/package-appimage.sh
+
+      - name: Upload build workspace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: original-core-build
+          path: |
+            build-linux/
+            install-linux/
+            dist/
+            packaging-tools/
+          if-no-files-found: warn
+
+  original-core-test:
+    needs: original-core-build
+    if: ${{ always() && needs.original-core-build.result == 'success' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore build workspace
+        uses: actions/download-artifact@v4
+        with:
+          name: original-core-build
+          path: .
       - name: Fetch fixed external XP3 test input
         run: |
           mkdir -p external-test
           curl -fL --retry 3 https://raw.githubusercontent.com/weimingtom/kirikiroid2_fork3/9f84364f47215ce9d352a1029879fdeca14f2653/_testdata/data.xp3 -o external-test/data.xp3
           echo '15f008b19fbd10d08002c8419670c0d7c98d03958047f2ded9dc3f1e8c58b02b  external-test/data.xp3' | sha256sum -c -
-      - name: Run original engine and advance the real game
-        run: |
-          # A clean save directory plays the original ~111-second opening.
-          # Extended transitions are provided by the original extrans plugin.
-          python3 scripts/linux/gui-smoke.py --engine build-linux/bin/kirikiroid2 --game external-test/data.xp3 --output gui-smoke --seconds 180 --capture-at 24 --capture-at 48 --action click:10:450:235 --action focus:150 --action key:154:space --action key:158:Return --action click:162:800:650 --require-log 'Scenario loaded : ch2004.ks' --require-log 'Startup script ended.' --require-log 'returned to : *ch01 line offset 11' --forbid-log 'Cannot find transition handler' --forbid-log 'Cannot find transition hander'
-          python3 scripts/linux/check-frame-region.py --report gui-smoke/report.json --reference frame-151.0.png --after 151 --region 160:0:1120:400 --output gui-smoke/background-region.json
-        env:
-          LIBGL_ALWAYS_SOFTWARE: 1
-          ALSOFT_DRIVERS: "null"
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: original-core-gui-evidence
-          path: gui-smoke/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: original-core-linux
-          path: install-linux/
       - name: Verify the packaged AppImage with the real XP3
         run: |
-          python3 scripts/linux/gui-smoke.py --engine dist/Kirikiroid2-original-x86_64.AppImage --game external-test/data.xp3 --output appimage-gui-smoke --seconds 180 --action click:10:450:235 --action focus:150 --action key:154:space --action key:158:Return --action click:162:800:650 --require-log 'Scenario loaded : ch2004.ks' --require-log 'returned to : *ch01 line offset 11' --forbid-log 'Cannot find transition handler' --forbid-log 'Cannot find transition hander'
+          # GitHub artifact download normalizes regular-file modes to 0644.
+          # Restore the executable contract before gui-smoke starts the engine.
+          chmod 0755 dist/kirikinux2-x86_64.AppImage
+          test -x dist/kirikinux2-x86_64.AppImage
+          python3 scripts/linux/gui-smoke.py --engine dist/kirikinux2-x86_64.AppImage --game external-test/data.xp3 --output appimage-gui-smoke --seconds 180 --action click:10:450:235 --action focus:150 --action key:154:space --action key:158:Return --action click:162:800:650 --require-log 'Scenario loaded : ch2004.ks' --require-log 'returned to : *ch01 line offset 11' --forbid-log 'Cannot find transition handler' --forbid-log 'Cannot find transition hander'
           python3 scripts/linux/check-frame-region.py --report appimage-gui-smoke/report.json --reference frame-151.0.png --after 151 --region 160:0:1120:400 --output appimage-gui-smoke/background-region.json
         env:
           APPIMAGE_EXTRACT_AND_RUN: "1"
           LIBGL_ALWAYS_SOFTWARE: "1"
           ALSOFT_DRIVERS: "null"
-      - uses: actions/upload-artifact@v4
+      - name: Upload test workspace
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: original-engine-appimage-evidence
-          path: appimage-gui-smoke/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: original-engine-appimage
+          name: original-core-test
           path: |
-            dist/Kirikiroid2-original-x86_64.AppImage
-            dist/SHA256SUMS
+            appimage-gui-smoke/
+            external-test/
+          if-no-files-found: warn
+
+  original-core-upload:
+    needs: [components, original-core-build, original-core-test]
+    if: ${{ always() }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Record build and test results
+        if: always()
+        run: |
+          mkdir -p workspace-artifacts
+          {
+            echo "components=${{ needs.components.result }}"
+            echo "build=${{ needs.original-core-build.result }}"
+            echo "test=${{ needs.original-core-test.result }}"
+          } > workspace-artifacts/workflow-results.txt
+      - name: Collect every available workspace artifact
+        if: always()
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: original-core-*
+          path: workspace-artifacts
+          merge-multiple: true
+      - name: Upload workspace files even after failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: original-core-workspace
+          path: workspace-artifacts/
+          if-no-files-found: warn

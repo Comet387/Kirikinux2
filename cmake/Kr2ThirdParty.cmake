@@ -12,7 +12,7 @@ pkg_check_modules(KR2_FFMPEG REQUIRED IMPORTED_TARGET libavformat libavcodec lib
 if(KR2_FFMPEG_libavcodec_VERSION VERSION_GREATER_EQUAL 59)
   message(FATAL_ERROR
     "FFmpeg ${KR2_FFMPEG_libavcodec_VERSION} (libavcodec >= 59, FFmpeg >= 5) removed APIs the "
-    "Kodi-derived video code of Kirikiroid2 uses.  Build FFmpeg 4.4 with "
+    "Kodi-derived video code used by Kirikinux2.  Build FFmpeg 4.4 with "
     "scripts/linux/build-ffmpeg4.sh and configure with "
     "-DCMAKE_PREFIX_PATH=${KR2_THIRD_PARTY}/install/ffmpeg4 (build.sh does this automatically).")
 endif()
@@ -79,6 +79,7 @@ endif()
 # CJK font for the engine (FontImpl.cpp looks for DroidSansFallback.ttf via cocos FileUtils)
 if(NOT KR2_DEFAULT_FONT)
   foreach(f
+      "${KR2_ROOT}/cocos/kr2/Resources/DroidSansFallback.ttf"
       /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc
       /usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc
       /usr/share/fonts/google-noto-cjk/NotoSansCJK-Regular.ttc

@@ -62,7 +62,7 @@ LaunchInfo InspectPath(const std::string& arg) {
 }
 
 void PrintUsage(const char* program) {
-    std::cout << "Kirikiroid2 Linux native frontend " << KIRIKIROID2_VERSION << "\n"
+    std::cout << "Kirikinux2 Linux native frontend " << KIRIKINUX_VERSION << "\n"
               << "Usage: " << program << " [GAME-DIRECTORY|GAME.XP3]\n\n"
               << "The window/input frontend is native SDL2 and works with X11 or\n"
               << "Wayland through SDL2. Script execution is provided by the\n"
@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
         return 0;
     }
     if (argc > 1 && (std::string(argv[1]) == "--version" || std::string(argv[1]) == "-v")) {
-        std::cout << KIRIKIROID2_VERSION << '\n';
+        std::cout << KIRIKINUX_VERSION << '\n';
         return 0;
     }
 
@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
     } else {
         launch = {"", "no game selected (drop a directory or XP3 archive)"};
     }
-    std::cout << "Kirikiroid2 Linux: " << launch.kind;
+    std::cout << "Kirikinux2 Linux: " << launch.kind;
     if (!launch.path.empty()) std::cout << " — " << launch.path;
     std::cout << '\n';
 
@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
     }
     SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
     SDL_Window* window = SDL_CreateWindow(
-        "Kirikiroid2 Linux (native SDL2)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        "Kirikinux2 Linux (native SDL2)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         kWindowWidth, kWindowHeight, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!window) {
         std::cerr << "SDL_CreateWindow failed: " << SDL_GetError() << '\n';

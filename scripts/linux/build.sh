@@ -23,4 +23,4 @@ if [ ! -e "$BUILD/CMakeCache.txt" ] && command -v ninja >/dev/null 2>&1; then ge
 cmake -S "$ROOT" -B "$BUILD" "${gen[@]}" "${extra[@]}" "$@"
 cmake --build "$BUILD" --parallel "${KR2_BUILD_JOBS:-2}"
 echo
-echo "run: $BUILD/bin/kirikiroid2 [game-dir | game.xp3]"
+echo "Kirikinux2 run: $BUILD/bin/kirikinux2 [game-dir | game.xp3]"

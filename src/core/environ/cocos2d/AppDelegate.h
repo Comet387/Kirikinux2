@@ -4,6 +4,9 @@
 class TVPAppDelegate : public cocos2d::Application {
 
 	virtual void initGLContextAttrs();
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+    virtual bool openURL(const std::string &url) override;
+#endif
 
 	/**
 	@brief    Implement Director and Scene init code here.

@@ -731,6 +731,13 @@ tjs_uint16 tTJSBinaryStream::ReadI16LE()
 #endif
 }
 //---------------------------------------------------------------------------
+tjs_uint8 tTJSBinaryStream::ReadI8LE()
+{
+	tjs_uint8 temp;
+	ReadBuffer(&temp, 1);
+	return temp;
+}
+//---------------------------------------------------------------------------
 
 
 

@@ -1,4 +1,4 @@
-# kirikinux2 - Linux desktop build of the ORIGINAL Kirikiroid2 engine.
+# Kirikinux2 - Linux desktop build of the ORIGINAL Kirikiroid2 engine.
 #
 # src/core and src/plugins are compiled the way src/core/Android.mk and
 # src/plugins/Android.mk compile them; only the platform layer differs:
@@ -103,13 +103,14 @@ target_link_libraries(krkr2core PUBLIC
 set_source_files_properties(${KR2_FFMPEG_USERS} PROPERTIES
   COMPILE_OPTIONS "-include;${KR2_ROOT}/platform/linux/compat/kr2_ffmpeg_compat.h")
 if(KR2_GTK3_FOUND)
+  pkg_check_modules(KR2_FONTCONFIG REQUIRED IMPORTED_TARGET fontconfig)
   # Imported-target usage requirements supply GTK's includes and compile flags.
   # Do not copy KR2_GTK3_INCLUDE_DIRS into a source-file property: that bypasses
   # CMake's implicit-include filtering and can emit -isystem /usr/include before
   # libstdc++ headers. <cstdlib>'s #include_next then cannot find stdlib.h.
   set_source_files_properties(${KR2_ROOT}/platform/linux/LinuxDialogs.cpp PROPERTIES
     COMPILE_DEFINITIONS KR2_LINUX_HAVE_GTK3=1)
-  target_link_libraries(krkr2core PUBLIC PkgConfig::KR2_GTK3)
+  target_link_libraries(krkr2core PUBLIC PkgConfig::KR2_GTK3 PkgConfig::KR2_FONTCONFIG)
 else()
   message(WARNING "gtk+-3.0 not found: message/input boxes fall back to stderr")
 endif()
@@ -132,35 +133,51 @@ target_compile_definitions(krkr2plugin PRIVATE
 target_compile_options(krkr2plugin PRIVATE ${KR2_COMMON_OPTIONS})
 add_dependencies(krkr2plugin krkr2core)
 
+# ------------------------------------------------------------ krkr2plugin_ext
+# Plugins ported from the KrKr2 emulator (github.com/2468785842/krkr2, KiriKiri
+# BSD-style licence, see src/plugins/ext/README.md).  They need C++17, so they
+# live in their own archive; it is always linked --whole-archive because the
+# ncbind self-registration objects are otherwise dropped by the linker.
+file(GLOB_RECURSE KR2_PLUGIN_EXT_SOURCES CONFIGURE_DEPENDS ${KR2_ROOT}/src/plugins/ext/*.cpp)
+add_library(krkr2plugin_ext STATIC ${KR2_PLUGIN_EXT_SOURCES})
+set_target_properties(krkr2plugin_ext PROPERTIES CXX_STANDARD 17 CXX_EXTENSIONS ON POSITION_INDEPENDENT_CODE ON)
+target_include_directories(krkr2plugin_ext PRIVATE
+  ${KR2_ROOT}/src/plugins ${KR2_ROOT}/src/plugins/ncbind ${KR2_ROOT}/src/plugins/ext
+  $<TARGET_PROPERTY:krkr2core,INTERFACE_INCLUDE_DIRECTORIES>)
+target_compile_definitions(krkr2plugin_ext PRIVATE
+  $<TARGET_PROPERTY:krkr2core,INTERFACE_COMPILE_DEFINITIONS>)
+target_compile_options(krkr2plugin_ext PRIVATE ${KR2_COMMON_OPTIONS})
+add_dependencies(krkr2plugin_ext krkr2core)
+
 # ----------------------------------------------------------------- executable
 set(KR2_BIN_DIR "${CMAKE_BINARY_DIR}/bin")
 set(KR2_RES_DIR "${KR2_BIN_DIR}/Resources") # cocos2d-x's default resource root on Linux
 
-add_executable(kirikiroid2 ${KR2_ROOT}/platform/linux/LinuxMain.cpp)
+add_executable(kirikinux ${KR2_ROOT}/platform/linux/LinuxMain.cpp)
 add_library(kr2_legacy_libm OBJECT platform/linux/compat/legacy_libm.c)
-target_sources(kirikiroid2 PRIVATE $<TARGET_OBJECTS:kr2_legacy_libm>)
+target_sources(kirikinux PRIVATE $<TARGET_OBJECTS:kr2_legacy_libm>)
 # Cocos 3.17's Linux prebuilt FreeType archive contains absolute relocations.
 # Ubuntu enables PIE by default; these legacy archives require a non-PIE host.
 # Keep Cocos' old static FreeType private. GTK/Pango must resolve FT_* against
 # their system shared FreeType rather than interposing the bundled copy.
-target_link_options(kirikiroid2 PRIVATE -no-pie -Wl,--exclude-libs,libfreetype.a)
-set_target_properties(kirikiroid2 PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS ON
+target_link_options(kirikinux PRIVATE -no-pie -Wl,--exclude-libs,libfreetype.a)
+set_target_properties(kirikinux PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS ON
   RUNTIME_OUTPUT_DIRECTORY "${KR2_BIN_DIR}" INSTALL_RPATH "$ORIGIN/lib")
-target_include_directories(kirikiroid2 PRIVATE ${KR2_CORE}/environ/cocos2d)
-target_compile_options(kirikiroid2 PRIVATE ${KR2_COMMON_OPTIONS})
+target_include_directories(kirikinux PRIVATE ${KR2_CORE}/environ/cocos2d)
+target_compile_options(kirikinux PRIVATE ${KR2_COMMON_OPTIONS})
 if(KR2_WHOLE_ARCHIVE)
   # LOCAL_WHOLE_STATIC_LIBRARIES := kr2plugin krkr2 ... : keeps self-registering plugins/codecs
-  target_link_libraries(kirikiroid2 PRIVATE -Wl,--whole-archive krkr2plugin krkr2core -Wl,--no-whole-archive)
+  target_link_libraries(kirikinux PRIVATE -Wl,--whole-archive krkr2plugin krkr2plugin_ext krkr2core -Wl,--no-whole-archive)
 else()
-  target_link_libraries(kirikiroid2 PRIVATE krkr2plugin)
+  target_link_libraries(kirikinux PRIVATE krkr2plugin -Wl,--whole-archive krkr2plugin_ext -Wl,--no-whole-archive)
 endif()
-target_link_libraries(kirikiroid2 PRIVATE krkr2core)
+target_link_libraries(kirikinux PRIVATE krkr2core)
 if(NOT KR2_WRAP_MALLOC)
   target_compile_definitions(krkr2core PRIVATE KR2_NO_MALLOC_WRAP=1)
 endif()
 if(KR2_WRAP_MALLOC)
   # project/android/jni/Android.mk: -Wl,--wrap=malloc ... (Application.cpp: HOOK_MALLOC)
-  target_link_options(kirikiroid2 PRIVATE -Wl,--wrap=malloc -Wl,--wrap=free -Wl,--wrap=realloc -Wl,--wrap=calloc)
+  target_link_options(kirikinux PRIVATE -Wl,--wrap=malloc -Wl,--wrap=free -Wl,--wrap=realloc -Wl,--wrap=calloc)
 endif()
 
 # ------------------------------------------------------------------ resources
@@ -169,7 +186,7 @@ add_custom_target(kr2_resources ALL
   COMMAND ${CMAKE_COMMAND} -E make_directory "${KR2_RES_DIR}/res/img"
   COMMAND ${CMAKE_COMMAND} -E copy_directory "${KR2_ROOT}/cocos/kr2/Resources" "${KR2_RES_DIR}"
   COMMAND ${CMAKE_COMMAND} -E copy_directory "${KR2_ROOT}/cocos/kr2/cocosstudio/img" "${KR2_RES_DIR}/res/img"
-  COMMENT "Kirikiroid2 UI resources -> ${KR2_RES_DIR}"
+  COMMENT "Kirikinux2 UI resources -> ${KR2_RES_DIR}"
   VERBATIM)
 if(KR2_STUDIO_TOP_PNG)
   add_custom_command(TARGET kr2_resources POST_BUILD
@@ -179,26 +196,42 @@ if(KR2_DEFAULT_FONT)
   add_custom_command(TARGET kr2_resources POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy "${KR2_DEFAULT_FONT}" "${KR2_RES_DIR}/DroidSansFallback.ttf" VERBATIM)
 else()
-  message(WARNING "No CJK font found (install fonts-droid-fallback or fonts-noto-cjk, or set KR2_DEFAULT_FONT); "
-                  "put default.ttf next to the game instead.")
+  message(FATAL_ERROR "No usable UI font found. Restore the bundled font or set KR2_DEFAULT_FONT to a complete CJK font.")
 endif()
+add_executable(kr2_check_resources platform/linux/tools/kr2_check_resources.cpp)
+target_link_libraries(kr2_check_resources PRIVATE ext_freetype ZLIB::ZLIB)
+target_link_options(kr2_check_resources PRIVATE -no-pie)
+add_dependencies(kr2_resources kr2_check_resources)
+add_custom_command(TARGET kr2_resources POST_BUILD
+  COMMAND $<TARGET_FILE:kr2_check_resources> "${KR2_RES_DIR}/DroidSansFallback.ttf" "${KR2_RES_DIR}/default.cur"
+  COMMENT "Checking CJK/Latin glyph coverage and the packaged cursor" VERBATIM)
 if(KR2_BUILD_UI_RESOURCES)
   add_executable(kr2_csd2csb ${KR2_ROOT}/platform/linux/tools/kr2_csd2csb.cpp)
   target_sources(kr2_csd2csb PRIVATE $<TARGET_OBJECTS:kr2_legacy_libm>)
   target_link_options(kr2_csd2csb PRIVATE -no-pie)
   target_include_directories(kr2_csd2csb PRIVATE ${KR2_COCOS_INCLUDE_DIRS})
-  target_link_libraries(kr2_csd2csb PRIVATE cocos2d)
+  # Ubuntu's X11 development package may expose libX11 as a static archive;
+  # keep its XCB dependency explicit for the standalone converter tool.
+  target_link_libraries(kr2_csd2csb PRIVATE cocos2d xcb)
   add_dependencies(kr2_resources kr2_csd2csb)
   add_custom_command(TARGET kr2_resources POST_BUILD
     COMMAND $<TARGET_FILE:kr2_csd2csb> "${KR2_ROOT}/cocos/kr2/cocosstudio" "${KR2_RES_DIR}/res"
     COMMENT "Publishing Cocos Studio layouts (.csd -> .csb)" VERBATIM)
 endif()
-add_dependencies(kirikiroid2 kr2_resources)
+add_dependencies(kirikinux kr2_resources)
+if(UNIX)
+  # Keep the historical target for existing scripts while exposing the
+  # canonical Kirikinux2 executable name to new users.
+  add_custom_command(TARGET kirikinux POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E rm -f "${KR2_BIN_DIR}/kirikinux2"
+    COMMAND ${CMAKE_COMMAND} -E create_symlink "$<TARGET_FILE_NAME:kirikinux>" "${KR2_BIN_DIR}/kirikinux2"
+    VERBATIM)
+endif()
 
 # ------------------------------------------------------------------- install
 include(GNUInstallDirs)
-set(KR2_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/kirikiroid2")
-install(TARGETS kirikiroid2 RUNTIME DESTINATION "${KR2_INSTALL_DIR}")
+set(KR2_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/kirikinux")
+install(TARGETS kirikinux RUNTIME DESTINATION "${KR2_INSTALL_DIR}")
 get_target_property(KR2_FMOD_LIBRARY ext_fmod IMPORTED_LOCATION)
 # The bundled Cocos binary's SONAME is libfmod.so.6, unlike its source filename.
 install(FILES "${KR2_FMOD_LIBRARY}" DESTINATION "${KR2_INSTALL_DIR}/lib" RENAME libfmod.so.6)
@@ -214,8 +247,9 @@ if(KR2_BUNDLE_FFMPEG)
   endforeach()
 endif()
 install(DIRECTORY "${KR2_RES_DIR}" DESTINATION "${KR2_INSTALL_DIR}")
-install(FILES platform/linux/kirikiroid2.desktop DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
-install(FILES icons/kirikiroid2-linux.png DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps" RENAME kirikiroid2.png)
+install(FILES platform/linux/kirikinux.desktop DESTINATION "${CMAKE_INSTALL_DATADIR}/applications" RENAME kirikinux2.desktop)
+install(FILES icons/kirikinux-linux.png DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps" RENAME kirikinux2.png)
 file(RELATIVE_PATH KR2_REL_RUNTIME "/${CMAKE_INSTALL_BINDIR}" "/${KR2_INSTALL_DIR}")
-configure_file(platform/linux/kirikiroid2-launcher.in "${CMAKE_BINARY_DIR}/kirikiroid2-launcher" @ONLY)
-install(PROGRAMS "${CMAKE_BINARY_DIR}/kirikiroid2-launcher" DESTINATION "${CMAKE_INSTALL_BINDIR}" RENAME kirikiroid2)
+configure_file(platform/linux/kirikinux-launcher.in "${CMAKE_BINARY_DIR}/kirikinux-launcher" @ONLY)
+install(PROGRAMS "${CMAKE_BINARY_DIR}/kirikinux-launcher" DESTINATION "${CMAKE_INSTALL_BINDIR}" RENAME kirikinux)
+install(PROGRAMS "${CMAKE_BINARY_DIR}/kirikinux-launcher" DESTINATION "${CMAKE_INSTALL_BINDIR}" RENAME kirikinux2)

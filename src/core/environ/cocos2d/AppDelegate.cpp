@@ -68,6 +68,11 @@ bool TVPAppDelegate::applicationDidFinishLaunching() {
 
 	// set searching path
 	FileUtils::getInstance()->setSearchPaths(searchPath);
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+	// Native GTK/Pango dialogs use the packaged face even on hosts without CJK fonts.
+	extern void KR2LinuxSetUIFont(const std::string &path);
+	KR2LinuxSetUIFont(FileUtils::getInstance()->fullPathForFilename("DroidSansFallback.ttf"));
+#endif
 
 	// turn on display FPS
 	director->setDisplayStats(false);
@@ -82,6 +87,12 @@ bool TVPAppDelegate::applicationDidFinishLaunching() {
 	// create a scene. it's an autorelease object
 	TVPMainScene *scene = TVPMainScene::CreateInstance();
 
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+    director->getEventDispatcher()->addCustomEventListener(GLViewImpl::EVENT_WINDOW_RESIZED, [this](EventCustom*) {
+        Size size=Director::getInstance()->getOpenGLView()->getFrameSize();
+        applicationScreenSizeChanged(size.width,size.height);
+    });
+#endif
 	// run
 	director->runWithScene(scene);
 
@@ -107,10 +118,22 @@ void TVPAppDelegate::initGLContextAttrs() {
 
 void TVPAppDelegate::applicationScreenSizeChanged(int newWidth, int newHeight)
 {
-// 	auto director = Director::getInstance();
-// 	director->getOpenGLView()->setFrameSize(newWidth, newHeight);
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+    if (newWidth <= 0 || newHeight <= 0) return;
+    auto *view=Director::getInstance()->getOpenGLView();
+    Size design(960.f,960.f*newHeight/newWidth);
+    view->setDesignResolutionSize(design.width,design.height,ResolutionPolicy::SHOW_ALL);
+    if (auto *scene=TVPMainScene::GetInstance()) scene->resizeDesktopView(design);
+#endif
 }
 
 void TVPOpenPatchLibUrl() {
 	cocos2d::Application::getInstance()->openURL("https://zeas2.github.io/Kirikiroid2_patch/patch");
 }
+
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+bool TVPAppDelegate::openURL(const std::string &url) {
+    extern bool KR2LinuxOpenURL(const std::string &);
+    return KR2LinuxOpenURL(url);
+}
+#endif

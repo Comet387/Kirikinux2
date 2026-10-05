@@ -2,7 +2,7 @@
 
 # Kirikiroid2 native Linux target
 
-This directory is the first native desktop target for Kirikiroid2. It uses the
+This directory is the first native desktop target for Kirikinux2. It uses the
 SDL2 Linux backend, so X11 is supported by SDL2's `x11` video driver (and the
 same binary can also use Wayland when available). It does **not** ask users to
 install Waydroid or another Android emulator.
@@ -15,7 +15,7 @@ On Debian/Ubuntu:
 sudo apt-get install cmake ninja-build libsdl2-dev
 cmake -S linux-native -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-./build/kirikiroid2-linux [path/to/game-or-game.xp3]
+./build/kirikinux-linux [path/to/game-or-game.xp3]
 ```
 
 The executable opens a native resizable window, accepts a dropped directory or
@@ -34,7 +34,7 @@ would produce a binary that merely embeds an Android host, so this target keeps
 the native window/input layer honest while the engine host is ported.
 
 The parser and archive implementation in `src/core` remain the compatibility
-source of truth. `KIRIKIROID2_ENABLE_LEGACY_CORE` is exposed in CMake to make
+source of truth. `KIRIKINUX_ENABLE_LEGACY_CORE` is exposed in CMake to make
 the dependency gap explicit; enabling it currently stops with a diagnostic
 rather than silently linking a different engine.
 

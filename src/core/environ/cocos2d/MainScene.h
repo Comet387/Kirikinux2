@@ -43,6 +43,9 @@ public:
 	cocos2d::Size getUINodeSize();
 	cocos2d::Size getGameNodeSize() { return GameNode->getContentSize(); }
 	void rotateUI();
+    void resizeDesktopView(const cocos2d::Size &size);
+    bool isTopUI(cocos2d::Node *node) const;
+    bool hasUIForm() const { return UINode->getChildrenCount() > 0; }
 
 	bool startupFrom(const std::string &path);
 

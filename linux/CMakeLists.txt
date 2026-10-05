@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
-project(Kirikiroid2Linux
+project(kirikinuxLinux
   VERSION 1.3.9
-  DESCRIPTION "Native Linux host for the Kirikiroid2 1.3.9 engine"
+  DESCRIPTION "Native Linux host for the Kirikinux2 1.3.9 engine"
   LANGUAGES CXX)
 
 option(KRKR2_WITH_X11 "Enable the X11 window backend" ON)
@@ -30,9 +30,9 @@ if(KRKR2_WITH_GTK3)
   if(GTK3_FOUND)
     list(APPEND KRKR2_DEFS KRKR2_HAVE_GTK3=1)
     list(APPEND KRKR2_LIBS PkgConfig::GTK3)
-    message(STATUS "Kirikiroid2 Linux: GTK3 game library enabled")
+    message(STATUS "Kirikinux2 Linux: GTK3 game library enabled")
   else()
-    message(STATUS "Kirikiroid2 Linux: GTK3 not found; graphical launcher disabled")
+    message(STATUS "Kirikinux2 Linux: GTK3 not found; graphical launcher disabled")
   endif()
 endif()
 
@@ -46,9 +46,9 @@ if(KRKR2_WITH_X11)
       list(APPEND KRKR2_LIBS ${X11_LIBRARIES})
       list(APPEND KRKR2_INCLUDES ${X11_INCLUDE_DIR})
     endif()
-    message(STATUS "Kirikiroid2 Linux: X11 backend enabled")
+    message(STATUS "Kirikinux2 Linux: X11 backend enabled")
   else()
-    message(STATUS "Kirikiroid2 Linux: X11 not found; backend disabled")
+    message(STATUS "Kirikinux2 Linux: X11 not found; backend disabled")
   endif()
 endif()
 
@@ -64,9 +64,9 @@ if(KRKR2_WITH_SDL2)
       list(APPEND KRKR2_LIBS ${SDL2_LIBRARIES})
       list(APPEND KRKR2_INCLUDES ${SDL2_INCLUDE_DIRS})
     endif()
-    message(STATUS "Kirikiroid2 Linux: SDL2 fallback enabled")
+    message(STATUS "Kirikinux2 Linux: SDL2 fallback enabled")
   else()
-    message(STATUS "Kirikiroid2 Linux: SDL2 not found; fallback disabled")
+    message(STATUS "Kirikinux2 Linux: SDL2 not found; fallback disabled")
   endif()
 endif()
 
@@ -92,10 +92,10 @@ if(KRKR2_WITH_TJS)
       "${CMAKE_CURRENT_LIST_DIR}/../src/core/tjs2/tjsRegExp.cpp")
     list(APPEND KRKR2_TJS_LIBS "${KRKR2_ONIG_LIBRARY}")
     list(APPEND KRKR2_TJS_PRIVATE_INCLUDES "${KRKR2_ONIG_INCLUDE_DIR}")
-    message(STATUS "Kirikiroid2 Linux: TJS2 regular expressions enabled")
+    message(STATUS "Kirikinux2 Linux: TJS2 regular expressions enabled")
   else()
     list(APPEND KRKR2_TJS_DEFS TJS_NO_REGEXP=1)
-    message(STATUS "Kirikiroid2 Linux: Oniguruma not found; TJS2 regular expressions disabled")
+    message(STATUS "Kirikinux2 Linux: Oniguruma not found; TJS2 regular expressions disabled")
   endif()
 
   add_library(krkr2-tjs STATIC ${KRKR2_TJS_SOURCES} tjs_platform.cpp)
@@ -109,20 +109,26 @@ if(KRKR2_WITH_TJS)
   list(APPEND KRKR2_HOST_SOURCES tjs_runtime.cpp)
   list(APPEND KRKR2_DEFS KRKR2_HAVE_TJS=1)
   list(APPEND KRKR2_LIBS krkr2-tjs)
-  message(STATUS "Kirikiroid2 Linux: original TJS2 interpreter enabled")
+  message(STATUS "Kirikinux2 Linux: original TJS2 interpreter enabled")
 endif()
 
-add_executable(kirikiroid2-linux ${KRKR2_HOST_SOURCES})
-target_compile_definitions(kirikiroid2-linux PRIVATE ${KRKR2_DEFS} KRKR2_VERSION=\"${PROJECT_VERSION}\")
-target_include_directories(kirikiroid2-linux PRIVATE ${KRKR2_INCLUDES} "${CMAKE_CURRENT_LIST_DIR}")
-target_link_libraries(kirikiroid2-linux PRIVATE ${KRKR2_LIBS})
-target_compile_options(kirikiroid2-linux PRIVATE -Wall -Wextra -Wpedantic)
+add_executable(kirikinux-linux ${KRKR2_HOST_SOURCES})
+target_compile_definitions(kirikinux-linux PRIVATE ${KRKR2_DEFS} KRKR2_VERSION=\"${PROJECT_VERSION}\")
+target_include_directories(kirikinux-linux PRIVATE
+  ${KRKR2_INCLUDES}
+  "${CMAKE_CURRENT_LIST_DIR}"
+  # StartupCompatibility.h is shared by the full engine and this small TJS
+  # host.  Keep the include path explicit so the standalone target exercises
+  # exactly the same startup compatibility layer as the packaged player.
+  "${CMAKE_CURRENT_LIST_DIR}/../src/core/base")
+target_link_libraries(kirikinux-linux PRIVATE ${KRKR2_LIBS})
+target_compile_options(kirikinux-linux PRIVATE -Wall -Wextra -Wpedantic)
 
 include(CTest)
 if(BUILD_TESTING)
   find_package(Python3 COMPONENTS Interpreter QUIET)
-  add_test(NAME linux-help COMMAND kirikiroid2-linux --help)
-  add_test(NAME linux-headless COMMAND kirikiroid2-linux --no-window)
+  add_test(NAME linux-help COMMAND kirikinux-linux --help)
+  add_test(NAME linux-headless COMMAND kirikinux-linux --no-window)
   add_executable(game-library-test tests/game_library_test.cpp game_library.cpp)
   target_include_directories(game-library-test PRIVATE "${CMAKE_CURRENT_LIST_DIR}")
   target_compile_options(game-library-test PRIVATE -Wall -Wextra -Wpedantic)
@@ -136,50 +142,50 @@ if(BUILD_TESTING)
     add_test(NAME xp3-create-raw-fixture COMMAND "${Python3_EXECUTABLE}"
       "${CMAKE_CURRENT_LIST_DIR}/tests/make_xp3.py" "${KRKR2_TEST_RAW_XP3}" --raw)
     set_tests_properties(xp3-create-raw-fixture PROPERTIES FIXTURES_SETUP xp3_raw_fixture)
-    add_test(NAME xp3-list COMMAND kirikiroid2-linux --list "${KRKR2_TEST_XP3}")
+    add_test(NAME xp3-list COMMAND kirikinux-linux --list "${KRKR2_TEST_XP3}")
     set_tests_properties(xp3-list PROPERTIES
       FIXTURES_REQUIRED xp3_fixture PASS_REGULAR_EXPRESSION "startup.tjs")
-    add_test(NAME xp3-list-raw COMMAND kirikiroid2-linux --list "${KRKR2_TEST_RAW_XP3}")
+    add_test(NAME xp3-list-raw COMMAND kirikinux-linux --list "${KRKR2_TEST_RAW_XP3}")
     set_tests_properties(xp3-list-raw PROPERTIES
       FIXTURES_REQUIRED xp3_raw_fixture PASS_REGULAR_EXPRESSION "startup.tjs")
   endif()
   if(KRKR2_WITH_TJS)
-    add_test(NAME tjs-expression COMMAND kirikiroid2-linux --eval "1 + 2 * 3")
+    add_test(NAME tjs-expression COMMAND kirikinux-linux --eval "1 + 2 * 3")
     set_tests_properties(tjs-expression PROPERTIES PASS_REGULAR_EXPRESSION "7")
-    add_test(NAME tjs-formatting COMMAND kirikiroid2-linux --eval
+    add_test(NAME tjs-formatting COMMAND kirikinux-linux --eval
       "\"%03d %.2f\".sprintf(7, 1.25)")
     set_tests_properties(tjs-formatting PROPERTIES PASS_REGULAR_EXPRESSION "007 1.25")
-    add_test(NAME tjs-invalid-expression COMMAND kirikiroid2-linux --eval "1 +")
+    add_test(NAME tjs-invalid-expression COMMAND kirikinux-linux --eval "1 +")
     set_tests_properties(tjs-invalid-expression PROPERTIES WILL_FAIL TRUE)
-    add_test(NAME tjs-script COMMAND kirikiroid2-linux --script
+    add_test(NAME tjs-script COMMAND kirikinux-linux --script
       "${CMAKE_CURRENT_LIST_DIR}/tests/smoke.tjs")
-    add_test(NAME tjs-directory-startup COMMAND kirikiroid2-linux --run
+    add_test(NAME tjs-directory-startup COMMAND kirikinux-linux --run
       "${CMAKE_CURRENT_LIST_DIR}/tests/game")
     set_tests_properties(tjs-directory-startup PROPERTIES
       PASS_REGULAR_EXPRESSION "startup script completed")
-    add_test(NAME tjs-directory-fallback COMMAND kirikiroid2-linux --run
+    add_test(NAME tjs-directory-fallback COMMAND kirikinux-linux --run
       "${CMAKE_CURRENT_LIST_DIR}/tests/fallback")
     set_tests_properties(tjs-directory-fallback PROPERTIES
       PASS_REGULAR_EXPRESSION "startup script completed")
     if(KRKR2_ONIG_INCLUDE_DIR AND KRKR2_ONIG_LIBRARY)
-      add_test(NAME tjs-regexp COMMAND kirikiroid2-linux --eval
+      add_test(NAME tjs-regexp COMMAND kirikinux-linux --eval
         "/linux/i.test(\"Linux\")")
       set_tests_properties(tjs-regexp PROPERTIES PASS_REGULAR_EXPRESSION "1")
     endif()
     if(Python3_Interpreter_FOUND)
-      add_test(NAME tjs-xp3-script COMMAND kirikiroid2-linux --script
+      add_test(NAME tjs-xp3-script COMMAND kirikinux-linux --script
         "${KRKR2_TEST_XP3}>startup.tjs")
       set_tests_properties(tjs-xp3-script PROPERTIES
         FIXTURES_REQUIRED xp3_fixture)
-      add_test(NAME tjs-xp3-script-raw COMMAND kirikiroid2-linux --script
+      add_test(NAME tjs-xp3-script-raw COMMAND kirikinux-linux --script
         "${KRKR2_TEST_RAW_XP3}>startup.tjs")
       set_tests_properties(tjs-xp3-script-raw PROPERTIES
         FIXTURES_REQUIRED xp3_raw_fixture)
-      add_test(NAME tjs-xp3-startup COMMAND kirikiroid2-linux --run
+      add_test(NAME tjs-xp3-startup COMMAND kirikinux-linux --run
         "${KRKR2_TEST_XP3}")
       set_tests_properties(tjs-xp3-startup PROPERTIES
         FIXTURES_REQUIRED xp3_fixture PASS_REGULAR_EXPRESSION "startup script completed")
-      add_test(NAME tjs-xp3-startup-raw COMMAND kirikiroid2-linux --run
+      add_test(NAME tjs-xp3-startup-raw COMMAND kirikinux-linux --run
         "${KRKR2_TEST_RAW_XP3}")
       set_tests_properties(tjs-xp3-startup-raw PROPERTIES
         FIXTURES_REQUIRED xp3_raw_fixture PASS_REGULAR_EXPRESSION "startup script completed")
@@ -197,7 +203,7 @@ if(BUILD_TESTING)
     add_test(NAME fork3-xp3-regression
       COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_LIST_DIR}/tests/run_external_xp3.py"
-        --binary "$<TARGET_FILE:kirikiroid2-linux>"
+        --binary "$<TARGET_FILE:kirikinux-linux>"
         --xp3 "${KRKR2_EXTERNAL_XP3}"
         --minimum "${KRKR2_EXTERNAL_XP3_MINIMUM}")
     set_tests_properties(fork3-xp3-regression PROPERTIES
@@ -206,17 +212,17 @@ if(BUILD_TESTING)
 endif()
 
 include(GNUInstallDirs)
-install(TARGETS kirikiroid2-linux RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES kirkr_host.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/kirikiroid2)
-install(FILES kirikiroid2-linux.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
-install(FILES "${CMAKE_CURRENT_LIST_DIR}/../icons/kirikiroid2-linux.png"
+install(TARGETS kirikinux-linux RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES kirkr_host.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/kirikinux)
+install(FILES kirikinux-linux.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES "${CMAKE_CURRENT_LIST_DIR}/../icons/kirikinux-linux.png"
   DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps)
-install(FILES README.md DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/kirikiroid2)
+install(FILES README.md DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/kirikinux)
 
-set(CPACK_PACKAGE_NAME "kirikiroid2-linux")
-set(CPACK_PACKAGE_VENDOR "Kirikiroid2 contributors")
-set(CPACK_PACKAGE_CONTACT "https://github.com/zeas2/Kirikiroid2")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Native Linux X11/SDL2 host for Kirikiroid2")
+set(CPACK_PACKAGE_NAME "kirikinux-linux")
+set(CPACK_PACKAGE_VENDOR "Kirikinux2 contributors")
+set(CPACK_PACKAGE_CONTACT "https://github.com/Comet387/kirikinux2")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Native Linux X11/SDL2 host for Kirikinux2")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_LIST_DIR}/../LICENSE")
 set(CPACK_GENERATOR "DEB")

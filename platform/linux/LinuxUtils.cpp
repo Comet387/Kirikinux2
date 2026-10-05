@@ -44,6 +44,7 @@
 // LinuxDialogs.cpp (GTK3, kept in its own translation unit so glib/gtk macros never
 // meet the krkr headers).  Both return -2 when no dialog could be shown.
 int KR2LinuxMessageBox(const std::string &text, const std::string &caption, const std::vector<std::string> &buttons);
+std::string KR2LinuxSelectGame(const std::string &initialPath, const std::vector<std::string> &labels);
 int KR2LinuxInputBox(std::string &text, const std::string &caption, const std::string &prompt, const std::vector<std::string> &buttons);
 
 extern std::thread::id TVPMainThreadID; // Application.cpp, set by TVPAppDelegate
@@ -111,8 +112,29 @@ static std::string _UnescapeMount(const char *s) {
 static std::string _AppDataDir() {
 	const char *x = getenv("XDG_DATA_HOME");
 	std::string dir = (x && *x) ? std::string(x) : _HomeDir() + "/.local/share";
-	dir += "/kirikiroid2";
+	const std::string legacy = dir + "/kirikiroid2";
+	dir += "/kirikinux";
 	_MkdirP(dir);
+	// Preserve prior global settings and recent games without deleting originals.
+	for (const char *name : {"GlobalPreference.xml", "recentpath.xml"}) {
+		const std::string destination = dir + "/" + name;
+		if (access(destination.c_str(), F_OK) == 0) continue;
+		FILE *input = fopen((legacy + "/" + name).c_str(), "rb");
+		if (!input) continue;
+		FILE *output = fopen(destination.c_str(), "wb");
+		bool copied = output != nullptr;
+		if (output) {
+			char buffer[4096];
+			size_t n;
+			while ((n = fread(buffer, 1, sizeof(buffer), input)) != 0) {
+				if (fwrite(buffer, 1, n, output) != n) { copied = false; break; }
+			}
+			if (ferror(input)) copied = false;
+			if (fclose(output)) copied = false;
+		}
+		fclose(input);
+		if (!copied) unlink(destination.c_str());
+	}
 	return dir;
 }
 
@@ -247,7 +269,7 @@ std::string TVPGetCurrentLanguage() {
 }
 
 std::string TVPGetPackageVersionString() {
-	return "1.3.9 (Linux, kirikinux2)";
+	return "1.3.9 (Linux, Kirikinux2)";
 }
 
 //---------------------------------------------------------------------------
@@ -257,7 +279,7 @@ std::string TVPGetPackageVersionString() {
 // (TVPMainFileSelectorForm::show).
 std::vector<std::string> TVPGetDriverPath() {
 	std::vector<std::string> ret;
-	if (const char *dir = getenv("KIRIKIROID2_GAME_DIR")) _PushUniqueDir(ret, dir);
+	if (const char *dir = getenv("KIRIKINUX_GAME_DIR")) _PushUniqueDir(ret, dir);
 	_PushUniqueDir(ret, _HomeDir());
 	if (FILE *fp = fopen("/proc/mounts", "r")) { // removable media, like the Android /proc/mounts scan
 		char dev[512], mnt[512], type[128];
@@ -303,6 +325,16 @@ static std::string _AbsPath(const std::string &p) {
 	if (realpath(p.c_str(), buf)) return buf;
 	if (!p.empty() && p[0] != '/' && getcwd(buf, sizeof(buf))) return std::string(buf) + "/" + p;
 	return p;
+}
+
+std::string TVPSelectGamePath(const std::string &initialPath) {
+	auto *locale = LocaleConfigManager::GetInstance();
+	std::vector<std::string> labels;
+	for (const char *id : {"menu_open_game", "open_game_prompt", "cancel", "open_game_folder", "open_game_file", "open_game_confirm"})
+		labels.push_back(locale->GetText(id));
+	std::string result;
+	_RunOnMainThread([&]() { result = KR2LinuxSelectGame(initialPath, labels); return 0; });
+	return result;
 }
 
 bool TVPCheckStartupArg() {
@@ -353,7 +385,6 @@ extern "C" int TVPShowSimpleMessageBox(const char *pszText, const char *pszTitle
 	for (unsigned int i = 0; i < nButton; ++i) btns.emplace_back((btnText && btnText[i]) ? btnText[i] : "");
 	int ret = _RunOnMainThread([&]() { return KR2LinuxMessageBox(text, title, btns); });
 	if (ret == -2) { // no GUI available: keep going with the first button, like a non-interactive run
-		fprintf(stderr, "[kirikiroid2] %s: %s\n", title.c_str(), text.c_str());
 		ret = 0;
 	}
 	return ret;
@@ -375,7 +406,6 @@ int TVPShowSimpleInputBox(ttstr &text, const ttstr &caption, const ttstr &prompt
 	for (const ttstr &btn : vecButtons) btns.emplace_back(btn.AsStdString());
 	int ret = _RunOnMainThread([&]() { return KR2LinuxInputBox(t, c, p, btns); });
 	if (ret == -2) {
-		fprintf(stderr, "[kirikiroid2] %s: %s (no dialog available, keeping \"%s\")\n", c.c_str(), p.c_str(), t.c_str());
 		ret = 0;
 	}
 	if (ret >= 0) text = t;

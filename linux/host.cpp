@@ -40,7 +40,7 @@ struct Engine {
     if (path.empty()) return true;
     handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
     if (!handle) {
-      std::cerr << "kirikiroid2: cannot load engine " << path << ": " << dlerror() << '\n';
+      std::cerr << "Kirikinux2: cannot load engine " << path << ": " << dlerror() << '\n';
       return false;
     }
     // The bridge ABI is intentionally tiny. A complete port can export these
@@ -88,7 +88,7 @@ class X11Window final : public Window {
     XSelectInput(display_, window_, ExposureMask | KeyPressMask | StructureNotifyMask);
     wm_delete_ = XInternAtom(display_, "WM_DELETE_WINDOW", False);
     XSetWMProtocols(display_, window_, &wm_delete_, 1);
-    XStoreName(display_, window_, "Kirikiroid2 (Linux)");
+    XStoreName(display_, window_, "Kirikinux2 (Linux)");
     gc_ = XCreateGC(display_, window_, 0, nullptr);
     XMapWindow(display_, window_);
     XFlush(display_);
@@ -127,7 +127,7 @@ class SDLWindow final : public Window {
   bool open(int width, int height, bool fullscreen) override {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) return false;
     Uint32 flags = SDL_WINDOW_SHOWN | (fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
-    window_ = SDL_CreateWindow("Kirikiroid2 (Linux)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+    window_ = SDL_CreateWindow("Kirikinux2 (Linux)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                width, height, flags);
     if (!window_) return false;
     renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED);
@@ -195,7 +195,7 @@ int run_host(const HostOptions &options) {
       if (storage.open(root, error)) storage.read(entry, data, error);
     }
     if (!error.empty()) {
-      std::cerr << "kirikiroid2: " << error << '\n';
+      std::cerr << "Kirikinux2: " << error << '\n';
       return 6;
     }
     std::cout.write(reinterpret_cast<const char *>(data.data()),
@@ -207,7 +207,7 @@ int run_host(const HostOptions &options) {
     TjsRunResult result;
     if (options.run_startup) {
       if (options.game.empty()) {
-        std::cerr << "kirikiroid2: --run requires a game directory or XP3 archive\n";
+        std::cerr << "Kirikinux2: --run requires a game directory or XP3 archive\n";
         return 64;
       }
       result = execute_tjs_startup(options.game);
@@ -226,30 +226,30 @@ int run_host(const HostOptions &options) {
       result = evaluate_tjs(*options.expression);
     }
     if (!result.ok) {
-      std::cerr << "kirikiroid2: TJS2: " << result.error << '\n';
+      std::cerr << "Kirikinux2: TJS2: " << result.error << '\n';
       return 5;
     }
     if (result.has_value) std::cout << result.value << '\n';
     if (options.run_startup)
-      std::cout << "kirikiroid2: startup script completed\n";
+      std::cout << "Kirikinux2: startup script completed\n";
     return 0;
   }
 #else
   if (options.expression || options.script || options.run_startup) {
-    std::cerr << "kirikiroid2: this build does not include the TJS2 interpreter\n";
+    std::cerr << "Kirikinux2: this build does not include the TJS2 interpreter\n";
     return 5;
   }
 #endif
 
   if (options.list_archive) {
     if (options.game.empty()) {
-      std::cerr << "kirikiroid2: --list requires an XP3 archive path\n";
+      std::cerr << "Kirikinux2: --list requires an XP3 archive path\n";
       return 64;
     }
     Xp3Archive archive;
     std::string error;
     if (!archive.open(options.game, error)) {
-      std::cerr << "kirikiroid2: " << error << '\n';
+      std::cerr << "Kirikinux2: " << error << '\n';
       return 6;
     }
     for (const Xp3Entry &entry : archive.entries()) {
@@ -263,7 +263,7 @@ int run_host(const HostOptions &options) {
   GamePath game;
   std::string error;
   if (!options.game.empty() && !resolve_game(options.game, game, error)) {
-    std::cerr << "kirikiroid2: " << error << ": " << options.game << '\n';
+    std::cerr << "Kirikinux2: " << error << ": " << options.game << '\n';
     return 2;
   }
   if (options.probe_only) {
@@ -275,7 +275,7 @@ int run_host(const HostOptions &options) {
   Engine engine;
   if (!engine.open(options.engine_library)) return 3;
   if (options.no_window) {
-    std::cout << "kirikiroid2: headless host ready" << (options.game.empty() ? "\n" : " for " + game.root + "\n");
+    std::cout << "Kirikinux2: headless host ready" << (options.game.empty() ? "\n" : " for " + game.root + "\n");
     return 0;
   }
 
@@ -291,7 +291,7 @@ int run_host(const HostOptions &options) {
   }
 #endif
   if (!window) {
-    std::cerr << "kirikiroid2: no window backend available (use --no-window or install X11/SDL2)\n";
+    std::cerr << "Kirikinux2: no window backend available (use --no-window or install X11/SDL2)\n";
     return 4;
   }
 

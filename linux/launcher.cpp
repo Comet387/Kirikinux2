@@ -244,7 +244,7 @@ void on_drag_data_received(GtkWidget *, GdkDragContext *context, gint, gint,
   }
   refresh_game_list(state);
   set_status(state, accepted ? "Dropped games were added."
-                             : "No valid Kirikiri game was found.",
+                             : "No valid Kirikiri game was found for Kirikinux2.",
              accepted ? "success" : "error");
   gtk_drag_finish(context, accepted, FALSE, time);
 }
@@ -281,7 +281,7 @@ int run_graphical_launcher(const HostOptions &options) {
   state.library.load(load_error);
 
   state.window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  gtk_window_set_title(GTK_WINDOW(state.window), "Kirikiroid2 Game Library");
+  gtk_window_set_title(GTK_WINDOW(state.window), "Kirikinux2 Game Library");
   gtk_window_set_default_size(GTK_WINDOW(state.window), options.width,
                               options.height);
   gtk_window_set_position(GTK_WINDOW(state.window), GTK_WIN_POS_CENTER);
@@ -289,7 +289,7 @@ int run_graphical_launcher(const HostOptions &options) {
   g_signal_connect(state.window, "destroy", G_CALLBACK(gtk_main_quit), nullptr);
 
   GtkWidget *header = gtk_header_bar_new();
-  gtk_header_bar_set_title(GTK_HEADER_BAR(header), "Kirikiroid2");
+  gtk_header_bar_set_title(GTK_HEADER_BAR(header), "Kirikinux2");
   gtk_header_bar_set_subtitle(GTK_HEADER_BAR(header), "Game Library");
   gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(header), TRUE);
   gtk_window_set_titlebar(GTK_WINDOW(state.window), header);

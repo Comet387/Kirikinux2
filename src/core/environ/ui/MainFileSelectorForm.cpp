@@ -1,4 +1,8 @@
 #include "MainFileSelectorForm.h"
+#include "DesktopFileLayout.h"
+#include "ui/UILayout.h"
+#include "platform/CCApplication.h"
+#include "DesktopScroll.h"
 #include "cocos2d.h"
 #include "cocostudio/CocoLoader.h"
 #include "cocostudio/CCSSceneReader.h"
@@ -39,7 +43,7 @@ std::deque<std::string> _HistoryPath;
 static void _AskExit() {
 	if (TVPShowSimpleMessageBoxYesNo(
 		LocaleConfigManager::GetInstance()->GetText("sure_to_exit"),
-		"Kirikiroid2") == 0) TVPExitApplication(0);
+		"Kirikinux2") == 0) TVPExitApplication(0);
 }
 
 bool TVPCheckIsVideoFile(const char *uri);
@@ -141,6 +145,23 @@ void TVPMainFileSelectorForm::onEnter()
 			static_cast<HistoryCell*>(cell)->rearrangeLayout();
 		}
 	}
+}
+
+void TVPMainFileSelectorForm::rearrangeLayout() {
+    bool menuShown=isMenuShowed();
+    if (_browserRoot) {
+        _browserRoot->setContentSize(TVPMainScene::GetInstance()->getUINodeSize());
+        ui::Helper::doLayout(_browserRoot);
+    }
+    inherit::rearrangeLayout();
+    layoutDesktopMenu(menuShown);
+    if (_historyList) {
+        for (Widget *cell : _historyList->getItems()) {
+            Size size=cell->getContentSize();size.width=_historyList->getContentSize().width;
+            cell->setContentSize(size);
+        }
+        _historyList->requestDoLayout();
+    }
 }
 
 void TVPMainFileSelectorForm::bindBodyController(const NodeMap &allNodes) {
@@ -246,6 +267,7 @@ void TVPMainFileSelectorForm::initFromFile()
 	{
 		CSBReader reader;
 		Node *root = reader.Load("ui/MainFileSelector.csb");
+        _browserRoot=root;
 		_fileList = reader.findController("fileList");
 		_historyList = static_cast<ListView*>(reader.findController("recentList"));
 		// TODO new node
@@ -282,8 +304,73 @@ void TVPMainFileSelectorForm::doStartup(const std::string &path) {
 	}
 }
 
+void TVPMainFileSelectorForm::openGame() {
+	hideMenu(nullptr);
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+	std::string path = TVPSelectGamePath(CurrentPath);
+	if (path.empty()) return; // cancel leaves the current browser/history intact
+	std::string lower = path;
+	std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
+	if (PathSplit(lower).second == "startup.tjs") path = PathSplit(path).first;
+	bool valid = false;
+	if (TVPCheckExistentLocalFolder(path)) {
+		bool hasStartup = false;
+		std::vector<std::string> archives;
+		std::string dataArchive;
+		TVPListDir(path, [&](const std::string &name, int mask) {
+			if (!(mask & S_IFREG)) return;
+			std::string file = name;
+			std::transform(file.begin(), file.end(), file.begin(), [](unsigned char c) { return std::tolower(c); });
+			if (file == "startup.tjs") hasStartup = true;
+			else if (file.size() > 4 && file.compare(file.size() - 4, 4, ".xp3") == 0) {
+				archives.push_back(path + "/" + name);
+				if (file == "data.xp3") dataArchive = archives.back();
+			}
+		});
+		if (hasStartup) valid = true;
+		else {
+			// A packed game directory needs its main archive mounted first.
+			// Never guess between several patch/resource archives without data.xp3.
+			if (!dataArchive.empty()) path = dataArchive;
+			else if (archives.size() == 1) path = archives.front();
+			if (!TVPCheckExistentLocalFolder(path)) valid = TVPCheckArchive(ttstr(path)) == 1;
+		}
+	} else {
+		valid = TVPCheckArchive(ttstr(path)) == 1;
+	}
+	if (!valid) {
+		auto *locale = LocaleConfigManager::GetInstance();
+		TVPShowSimpleMessageBox(locale->GetText("open_game_invalid"), locale->GetText("menu_open_game"));
+		return;
+	}
+	startup(path);
+#else
+	// Other platforms keep their in-app file browser; directory creation is
+	// no longer exposed as a game-launch action.
+	ListDir(CurrentPath);
+#endif
+}
+
 std::string TVPGetOpenGLInfo();
 void TVPOpenPatchLibUrl();
+
+bool TVPMainFileSelectorForm::acceptsDesktopScroll(Node *node) {
+    if (!isMenuShowed()) return true;
+    while(node && node!=this) { if(node==_menu)return true;node=node->getParent(); }
+    return false;
+}
+
+void TVPMainFileSelectorForm::layoutDesktopMenu(bool shown) {
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+    if (!_menu) return;
+    Size scene=getContentSize(),size=_menu->getContentSize();
+    float scale=TVPMainScene::GetInstance()->getUIScale();
+    size.height=scene.height/scale;
+    _menu->setScale(scale);_menu->setContentSize(size);ui::Helper::doLayout(_menu);
+    _menu->stopAllActions();_menu->setPosition(Vec2(shown?scene.width-size.width*scale:scene.width,0));
+    _mask->setContentSize(scene);_touchHideMenu->setContentSize(scene);
+#endif
+}
 
 void TVPMainFileSelectorForm::showMenu(Ref*) {
 	if (!_menu) {
@@ -322,6 +409,7 @@ void TVPMainFileSelectorForm::showMenu(Ref*) {
 		sizeLocalPref = localPref->getContentSize();
 
 		_menuList = dynamic_cast<ui::ListView*>(reader.findController("menulist"));
+        layoutDesktopMenu(false);
 
 		// captions
 		LocaleConfigManager *localeMgr = LocaleConfigManager::GetInstance();
@@ -333,7 +421,7 @@ void TVPMainFileSelectorForm::showMenu(Ref*) {
 		localeMgr->initText(reader.findController<Text>("titleAbout"));
 		localeMgr->initText(reader.findController<Text>("titleExit"));
 		localeMgr->initText(reader.findController<Text>("titleRepack"));
-		localeMgr->initText(reader.findController<Text>("titleNewFolder"));
+		localeMgr->initText(reader.findController<Text>("titleNewFolder"), "menu_open_game");
 
 		// button events
 		reader.findWidget("btnRotate")->addClickEventListener([](Ref*) {
@@ -382,6 +470,7 @@ void TVPMainFileSelectorForm::showMenu(Ref*) {
 					LocaleConfigManager::GetInstance()->GetText("ok").c_str(),
 					LocaleConfigManager::GetInstance()->GetText("browse_patch_lib").c_str(),
 					LocaleConfigManager::GetInstance()->GetText("device_info").c_str(),
+                    "GitHub",
 				};
 
 				std::string strCaption = LocaleConfigManager::GetInstance()->GetText("menu_about");
@@ -389,6 +478,9 @@ void TVPMainFileSelectorForm::showMenu(Ref*) {
 					sizeof(pszBtnText) / sizeof(pszBtnText[0]), pszBtnText);
 
 				switch (n) {
+                case 3:
+                    cocos2d::Application::getInstance()->openURL("https://github.com/Comet387/kirikinux2");
+                    break;
 				case 1:
 					TVPOpenPatchLibUrl();
 					break;
@@ -411,23 +503,7 @@ void TVPMainFileSelectorForm::showMenu(Ref*) {
 			TVPProcessXP3Repack(CurrentPath);
 			hideMenu(nullptr);
 		});
-		reader.findWidget("btnNewFolder")->addClickEventListener([this](Ref*) {
-			ttstr name = TJS_W("New Folder");
-			std::vector<ttstr> btns;
-			btns.emplace_back("OK");
-			btns.emplace_back("Cancel");
-			if (TVPShowSimpleInputBox(name, "Input name", "", btns) == 0) {
-				ttstr newname(CurrentPath);
-				newname += TJS_W("/");
-				newname += name;
-				if (!TVPCreateFolders(newname)) {
-					TVPShowSimpleMessageBox(TJS_W("Fail to create folder."), TJS_W("Error"));
-				} else {
-					ListDir(CurrentPath);
-				}
-			}
-			hideMenu(nullptr);
-		});
+		reader.findWidget("btnNewFolder")->addClickEventListener([this](Ref*) { openGame(); });
 
 	}
 	const Size &uiSize = getContentSize();
@@ -502,11 +578,42 @@ void TVPMainFileSelectorForm::ListHistory()
 {
 	if (!_historyList) return;
 	_historyList->removeAllChildren();
+    TVPEnableDesktopScroll(_historyList);
 	HistoryCell *nullcell = new HistoryCell();
+	nullcell->autorelease();
 	nullcell->init();
 	Size cellsize = _historyList->getContentSize();
-	cellsize.height = 100;
+	cellsize.height = 190;
 	nullcell->setContentSize(cellsize);
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+	auto *locale = LocaleConfigManager::GetInstance();
+	const std::string font = FileUtils::getInstance()->fullPathForFilename("DroidSansFallback.ttf");
+	auto *background = Layout::create();
+	background->setName("open_game");
+	background->setAnchorPoint(Vec2::ZERO);
+	background->setBackGroundColorType(Layout::BackGroundColorType::SOLID);
+	background->setBackGroundColor(Color3B(54, 75, 60));
+	background->setContentSize(Size(std::max(100.f, cellsize.width - 48), 78));
+	background->setPosition(Vec2(24, 94));
+	nullcell->addChild(background);
+	auto *open = Button::create();
+	open->setTitleFontName(font);
+	open->setTitleFontSize(40);
+	open->setTitleText(locale->GetText("menu_open_game"));
+	open->ignoreContentAdaptWithSize(false);
+	open->setContentSize(background->getContentSize());
+	open->setPosition(Vec2(background->getContentSize().width / 2, 39));
+	open->addClickEventListener([this](Ref*) { openGame(); });
+	background->addChild(open);
+	auto *hint = Text::create(locale->GetText("open_game_hint"), font, 24);
+	hint->setName("open_game_hint");
+	hint->ignoreContentAdaptWithSize(false);
+	hint->setTextAreaSize(Size(std::max(100.f, cellsize.width - 48), 72));
+	hint->setAnchorPoint(Vec2(0, 1));
+	hint->setPosition(Vec2(24, 83));
+	nullcell->addChild(hint);
+#endif
+	nullcell->rearrangeLayout();
 	_historyList->pushBackCustomItem(nullcell);
 	for (auto it = _HistoryPath.begin(); it != _HistoryPath.end();) {
 		const std::string &fullpath = *it;
@@ -518,7 +625,7 @@ void TVPMainFileSelectorForm::ListHistory()
 			split_path = PathSplit(path);
 			cell = HistoryCell::create(fullpath, split_path.first + "/", split_path.second, "/" + lastname);
 			Widget::ccWidgetClickCallback funcConf;
-			if (TVPCheckExistentLocalFile(path + "/Kirikiroid2Preference.xml"))
+			if (IndividualConfigManager::CheckExistAt(path))
 				funcConf = [this, path](Ref*){ onShowPreferenceConfigAt(path); };
 			cell->initFunction(std::bind(&TVPMainFileSelectorForm::RemoveHistoryCell, this, std::placeholders::_1, cell),
 				[this, path](Ref*){ ListDir(path); }, funcConf, [this, fullpath](Ref*) { startup(fullpath); });
@@ -533,7 +640,9 @@ void TVPMainFileSelectorForm::ListHistory()
 		}
 	}
 	nullcell = new HistoryCell();
+	nullcell->autorelease();
 	nullcell->init();
+	cellsize.height = 100;
 	nullcell->setContentSize(cellsize);
 	_historyList->pushBackCustomItem(nullcell);
 }
@@ -573,6 +682,41 @@ void TVPMainFileSelectorForm::HistoryCell::initInfo(const std::string &fullpath,
 {
 	_fullpath = fullpath;
 
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+    _displayName = pathname + filename;
+    auto *root = Layout::create();
+    root->setAnchorPoint(Vec2::ZERO);
+    root->setClippingEnabled(true);
+    root->setBackGroundColorType(Layout::BackGroundColorType::SOLID);
+    root->setBackGroundColor(Color3B(40, 46, 41));
+    _root = root;
+    const std::string font = FileUtils::getInstance()->fullPathForFilename("DroidSansFallback.ttf");
+    auto button = [&](const std::string &title) {
+        auto *node = Button::create("img/empty.png", "img/white.png");
+        node->setTitleFontName(font);
+        node->setTitleFontSize(36);
+        node->setTitleText(title);
+        node->ignoreContentAdaptWithSize(false);
+        node->setPropagateTouchEvents(true);
+        root->addChild(node);
+        return node;
+    };
+    _btn_delete = button("×");
+    _btn_jump = button(">");
+    _btn_conf = button("⚙");
+    _btn_play = button("▶");
+    _path = Text::create("", font, 44);
+    _prefix = Text::create("", font, 30);
+    _prefix->setTextColor(Color4B(176, 186, 177, 255));
+    for (auto *label : {_path, _prefix}) {
+        label->setAnchorPoint(Vec2(0, .5f));
+        root->addChild(label);
+    }
+    addChild(root);
+    setContentSize(Size(640, 238));
+    rearrangeLayout();
+#else
+
 	CSBReader reader;
 	_root = reader.Load("ui/RecentListItem.csb");
 	_scrollview = static_cast<cocos2d::ui::ScrollView*>(reader.findController("scrollview"));
@@ -594,10 +738,44 @@ void TVPMainFileSelectorForm::HistoryCell::initInfo(const std::string &fullpath,
 
 	setContentSize(_root->getContentSize());
 	addChild(_root);
+#endif
 }
 
 void TVPMainFileSelectorForm::HistoryCell::rearrangeLayout()
 {
+#if CC_TARGET_PLATFORM == CC_PLATFORM_LINUX
+    const float width = std::max(1.f, getContentSize().width - 16.f / .30f);
+    const float padding = std::min(24.f, width / 8);
+    if (!_root) {
+        // The launch shortcut is also a list item and must follow list resize.
+        if (auto *intro = getChildByName("open_game")) {
+            intro->setContentSize(Size(std::max(1.f, width - padding * 2), 78));
+            intro->setPositionX(padding);
+            for (Node *child : intro->getChildren()) {
+                child->setContentSize(intro->getContentSize());
+                child->setPosition(intro->getContentSize() / 2);
+            }
+        }
+        if (auto *hint = dynamic_cast<Text*>(getChildByName("open_game_hint"))) {
+            hint->setTextAreaSize(Size(std::max(1.f, width - padding * 2), 72));
+            hint->setPositionX(padding);
+        }
+        return;
+    }
+    _root->setContentSize(Size(width, 238));
+    _path->setPosition(Vec2(padding, 191));
+    _prefix->setPosition(Vec2(padding, 136));
+    TVPFitFileText(_path, _displayName, std::max(0.f, width - 2 * padding));
+    TVPFitFileText(_prefix, _fullpath, std::max(0.f, width - 2 * padding));
+    Widget *buttons[] = {_btn_delete, _btn_jump, _btn_conf, _btn_play};
+    const float column = std::max(0.f, width - padding * 2) / 4;
+    for (int i = 0; i < 4; ++i) {
+        static_cast<Button*>(buttons[i])->setTitleFontSize(std::min(36.f, std::max(1.f, column * .6f)));
+        buttons[i]->setContentSize(Size(column, 88));
+        buttons[i]->setPosition(Vec2(padding + column * (i + .5f), 55));
+    }
+#else
+
 	if (!_root) return;
 	_root->setContentSize(this->getContentSize());
 	ui::Helper::doLayout(_root);
@@ -623,6 +801,7 @@ void TVPMainFileSelectorForm::HistoryCell::rearrangeLayout()
 	viewSize.width += btnw + btnw;
 	_scrollview->setInnerContainerSize(viewSize);
 	container->setPosition(offsetx, 0);
+#endif
 }
 
 void TVPMainFileSelectorForm::HistoryCell::initFunction(const ccWidgetClickCallback &funcDel, const ccWidgetClickCallback &funcJump, const ccWidgetClickCallback &funcConf, const ccWidgetClickCallback &funcPlay)
@@ -636,5 +815,6 @@ void TVPMainFileSelectorForm::HistoryCell::initFunction(const ccWidgetClickCallb
 
 void TVPMainFileSelectorForm::HistoryCell::onSizeChanged()
 {
-
+    Widget::onSizeChanged();
+    rearrangeLayout();
 }

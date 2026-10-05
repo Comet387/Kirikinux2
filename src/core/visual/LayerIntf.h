@@ -194,6 +194,10 @@ public:
 	~tTJSNI_BaseLayer();
 	tjs_error TJS_INTF_METHOD Construct(tjs_int numparams, tTJSVariant **param,
 		iTJSDispatch2 *tjs_obj);
+	// Kirikinux2: used by motionplayer PrivateMotionGLL (ported from KrKr2).
+	tjs_error ConstructResolvedTreeOwnerLike_0x800438(
+		class iTVPLayerTreeOwner *layerTreeOwner, tTJSNI_BaseLayer *parentLayer,
+		iTJSDispatch2 *tjs_obj, const tTJSVariantClosure &actionOwner);
 	void TJS_INTF_METHOD Invalidate();
 
 	iTJSDispatch2 * GetOwnerNoAddRef() const { return Owner; }
@@ -807,6 +811,22 @@ public:
 		const tTVPRect &srcrect, tTVPBlendOperationMode mode = omAuto, tjs_int opacity = 255,
 		tTVPBBStretchType type = stNearest);
 
+	// Kirikinux2: mesh/bezier-patch drawing used by the Motion player,
+	// ported from the KrKr2 emulator core (visual/LayerIntf.cpp).
+	void BezierPatchCopy(const tTVPPointD *points, tjs_int divx, tjs_int divy,
+		iTVPBaseBitmap *src, const tTVPRect &srcrect,
+		tTVPBBStretchType mode = stNearest, bool clear = false);
+	void MeshCopy(const tTVPPointD *points, tjs_int divx, tjs_int divy,
+		iTVPBaseBitmap *src, const tTVPRect &srcrect,
+		tTVPBBStretchType mode = stNearest, bool clear = false);
+	void OperateBezierPatch(const tTVPPointD *points, tjs_int divx, tjs_int divy,
+		iTVPBaseBitmap *src, const tTVPRect &srcrect,
+		tTVPBlendOperationMode mode = omAuto, tjs_int opacity = 255,
+		tTVPBBStretchType type = stNearest, bool clear = false);
+	void OperateMesh(const tTVPPointD *points, tjs_int divx, tjs_int divy,
+		iTVPBaseBitmap *src, const tTVPRect &srcrect,
+		tTVPBlendOperationMode mode = omAuto, tjs_int opacity = 255,
+		tTVPBBStretchType type = stNearest, bool clear = false);
 	void DoBoxBlur(tjs_int xblur = 1, tjs_int yblur = 1);
 
 	void AdjustGamma(const tTVPGLGammaAdjustData & data);

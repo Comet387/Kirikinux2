@@ -1,0 +1,18 @@
+if (kirikiriz != false) throw "Unexpected krkrz API flag";
+// SPDX-License-Identifier: AGPL-3.0-only
+// Reproduce the global read seen at VM ip 265 in the uploaded initialize.tjs.
+if (debugWindowEnabled != false) throw "Unexpected debugger default";
+debugWindowEnabled = true;
+if (!debugWindowEnabled) throw "Debugger flag must remain writable";
+debugWindowEnabled = false;
+Scripts.compileStorage("initialize-source.tjs", "initialize-bytecode.tjs");
+Scripts.execStorage("initialize-bytecode.tjs");
+var missingRejected = false;
+try { Scripts.eval("unrelatedMissingProperty"); } catch (e) { missingRejected = true; }
+if (!missingRejected) throw "Missing-property errors must remain enabled";
+Debug.message("KIRIKINUX_STARTUP_COMPAT_TEXT_AND_BYTECODE_OK");
+var regressionWindow = new Window();
+regressionWindow.caption = "Kirikinux2 startup regression";
+regressionWindow.width = 480;
+regressionWindow.height = 300;
+regressionWindow.visible = true;

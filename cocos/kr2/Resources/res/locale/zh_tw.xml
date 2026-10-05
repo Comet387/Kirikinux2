@@ -8,7 +8,7 @@
     <Item id="preference_software" text="软件渲染器"/>
     <Item id="preference_renderer_opt" text="渲染器高级选项"/>
     <Item id="preference_soft_renderer_opt" text="软件渲染器选项"/>
-    <Item id="preference_opengl_renderer_opt" text="OpenGL渲染器选项"/>
+    <Item id="preference_opengl_renderer_opt" text="OpenGL 渲染器选项"/>
     <Item id="preference_multi_draw_thread" text="渲染线程数"/>
     <Item id="preference_draw_thread_auto" text="自动"/>
     <Item id="preference_draw_thread_1" text="1"/>
@@ -39,9 +39,9 @@
     <Item id="preference_ogl_texsize_16384" text="16384"/>
     <Item id="preference_mem_limit" text="限制内存用量（视具体游戏）"/>
     <Item id="preference_mem_unlimited" text="不限"/>
-    <Item id="preference_mem_high" text="高占用(<300MB)"/>
-    <Item id="preference_mem_medium" text="中等占用(<200MB)"/>
-    <Item id="preference_mem_low" text="低占用(<100MB)"/>
+    <Item id="preference_mem_high" text="高占用(&lt;300MB)"/>
+    <Item id="preference_mem_medium" text="中等占用(&lt;200MB)"/>
+    <Item id="preference_mem_low" text="低占用(&lt;100MB)"/>
     <Item id="preference_show_fps" text="显示 FPS"/>
     <Item id="preference_fps_limit" text="限制 FPS"/>
     <Item id="preference_hide_loading_ad" text="加载时不显示广告"/>
@@ -65,18 +65,18 @@
     <Item id="continue_run" text="仍然继续"/>
     <Item id="get_sdcard_permission" text="获取写入权限"/>
     <Item id="crash_report" text="崩溃报告"/>
-    <Item id="crash_report_msg" text="发现崩溃数据，发送数据（%d个文件）到服务器以助我们改进这个应用？"/>
+    <Item id="crash_report_msg" text="发现崩溃数据，发送数据（%d 个文件）到服务器以助我们改进这个应用？"/>
     <Item id="menu_rotate" text="旋转屏幕"/>
     <Item id="menu_global_preference" text="全局设置"/>
     <Item id="menu_new_local_pref" text="新建独立设置"/>
     <Item id="menu_local_pref" text="独立设置"/>
-    <Item id="menu_new_folder" text="新建文件夹"/>
-    <Item id="menu_about" text="关于"/>
+    <Item id="menu_new_folder" text="開啟遊戲"/>
+    <Item id="menu_about" text="關於 Kirikinux2"/>
     <Item id="menu_exit" text="退出"/>
     <Item id="menu_help" text="查看幫助"/>
-    <Item id="menu_archive_repack" text="转换/解密XP3封包"/>
-    <Item id="menu_web_server" text="Web文件服务器"/>
-    <Item id="about_content" text="可以在github补丁页面寻找补丁：&#10;https://zeas2.github.io/Kirikiroid2_patch/patch&#10;如遇到问题，请反馈到到项目页面：&#10;https://github.com/zeas2/Kirikiroid2/issues&#10;或者到百度贴吧寻找解决方案：&#10;百度Kirikiroid2吧"/>
+    <Item id="menu_archive_repack" text="转换/解密 XP3 封包"/>
+    <Item id="menu_web_server" text="Web 文件服务器"/>
+    <Item id="about_content" text="專案 GitHub 頁面：&#10;https://github.com/Comet387/kirikinux2&#10;可以在 GitHub 補丁頁面尋找補丁：&#10;https://zeas2.github.io/Kirikiroid2_patch/patch&#10;問題回報：&#10;https://github.com/Comet387/kirikinux2/issues"/>
     <Item id="about_content_i" text=""/>
     <Item id="sure_to_exit" text="确定退出吗？"/>
     <Item id="msgbox_yes" text="是"/>
@@ -86,11 +86,11 @@
     <Item id="use_last_path" text="使用最近启动的路径："/>
 	
     <Item id="notice" text="提示"/>
-    <Item id="err_narrow_to_wide" text="无法转换字节字符为宽字符，可能数据被加密或损坏，也可能是使用了错误的文本编码。&#10;如果数据被加密，您可能需要xp3filter.tjs&#10;如果文本不是以SHIFT_JIS编码，需要用patch.tjs指定正确的编码格式。"/>
+    <Item id="err_narrow_to_wide" text="无法转换字节字符为宽字符，可能数据被加密或损坏，也可能是使用了错误的文本编码。&#10;如果数据被加密，您可能需要 xp3filter.tjs&#10;如果文本不是以 SHIFT_JIS 编码，需要用 patch.tjs 指定正确的编码格式。"/>
 	<Item id="err_no_memory" text="内存不足（若经常出现此问题，可以试着在选项里限制内存用量）"/>
 	<Item id="err_occured" text="发生错误"/>
 	<Item id="err_read_error" text="读取错误，数据或已损坏"/>
-	<Item id="err_not_xp3_archive" text="%1 不是有效的XP3包。数据或已损坏。"/>
+	<Item id="err_not_xp3_archive" text="%1 不是有效的 XP3 包。数据或已损坏。"/>
 	<Item id="err_cannot_suggest_graph_ext" text="%1 无法加载此图片，可能是数据不完整或脚本错误"/>
 	<Item id="delete" text="删除"/>
 	<Item id="file_operate_menu_title" text="文件管理"/>
@@ -98,11 +98,11 @@
 	<Item id="ensure_to_delete_file" text="确定要删除吗："/>
 	<Item id="ensure_item_count" text="%d 个项目"/>
 	<Item id="device_info" text="设备信息"/>
-	<Item id="supported_opengl_extension" text="OpenGL扩展特性（仅列出当前可用的扩展）："/>
-	<Item id="preference_opengl_extension_opt" text="OpenGL扩展"/>
-	<Item id="startup_patch_fail" text="补丁失败，请更新patch.tjs"/>
+	<Item id="supported_opengl_extension" text="OpenGL 扩展特性（仅列出当前可用的扩展）："/>
+	<Item id="preference_opengl_extension_opt" text="OpenGL 扩展"/>
+	<Item id="startup_patch_fail" text="补丁失败，请更新 patch.tjs"/>
 	<Item id="browse_patch_lib" text="浏览补丁库"/>
-	<Item id="preference_opengl_extension_desc" text="这里是可能利用的OpenGL扩展列表，用于提高渲染的效率。&#10;视设备的不同，部分特性开启后可能会出现渲染错误。"/>
+	<Item id="preference_opengl_extension_desc" text="这里是可能利用的 OpenGL 扩展列表，用于提高渲染的效率。&#10;视设备的不同，部分特性开启后可能会出现渲染错误。"/>
 	<Item id="preference_android_fetch_sdcard_permission" text="获取外部存储卡写入权限"/>
 	
 	<Item id="filemgr_unselect" text="取消"/>
@@ -119,8 +119,17 @@
 	
 	<Item id="archive_repack_desc" text="解密并转换封包可以加快运行的速度并减少发热量。请保证剩余的空间大于最大的封包文件大小，否则转换操作可能会失败。"/>
 	<Item id="archive_repack_merge_img" text="合并遮罩图片"/>
-	<Item id="archive_repack_conv_etc2" text="转换图片格式为ETC2"/>
+	<Item id="archive_repack_conv_etc2" text="转换图片格式为 ETC2"/>
 	<Item id="archive_repack_proc_title" text="转换进行中..."/>
-	<Item id="archive_repack_no_xp3filter" text="当前目录未发现xp3filter，可能不需要进行转换。仍然继续？"/>
-	<Item id="archive_repack_no_xp3" text="当前目录未发现xp3封包，操作中止。"/>
+	<Item id="archive_repack_no_xp3filter" text="当前目录未发现 xp3filter，可能不需要进行转换。仍然继续？"/>
+	<Item id="archive_repack_no_xp3" text="当前目录未发现 xp3 封包，操作中止。"/>
+    <Item id="menu_open_game" text="開啟遊戲"/>
+    <Item id="open_game_prompt" text="選擇 XP3 檔案，或包含 startup.tjs / XP3 的遊戲目錄。"/>
+    <Item id="open_game_folder" text="選擇遊戲目錄"/>
+    <Item id="open_game_file" text="選擇遊戲檔案"/>
+    <Item id="open_game_confirm" text="開啟"/>
+    <Item id="open_game_invalid" text="請選擇 XP3 檔案，或包含 startup.tjs / XP3 的遊戲目錄。"/>
+    <Item id="open_game_hint" text="無需命令列：選擇檔案或目錄即可開始遊戲。"/>
+    <Item id="preference_keymap" text="按鍵映射"/>
+    <Item id="preference_reset_def_skin" text="恢復預設介面"/>
 </Locale>

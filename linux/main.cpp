@@ -12,7 +12,7 @@
 using krkr2::HostOptions;
 
 static void usage(const char *name) {
-  std::cout << "Kirikiroid2 Linux native host " << KRKR2_VERSION << "\n"
+  std::cout << "Kirikinux2 Linux native host " << KRKR2_VERSION << "\n"
             << "Usage: " << name << " [options] [game-dir|game.xp3]\n"
             << "  --probe             validate path and exit\n"
             << "  --list              list entries in the positional XP3 archive\n"
