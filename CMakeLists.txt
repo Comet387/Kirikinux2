@@ -25,6 +25,7 @@ option(KR2_PERMISSIVE "Relax GCC diagnostics the 2016-era sources trip over (-fp
 option(KR2_BUILD_UI_RESOURCES "Publish cocos/kr2/cocosstudio/*.csd to .csb at build time" ON)
 option(KR2_WITH_JXR "Build visual/LoadJXR.cpp against jxrlib (libjxr-dev)" OFF)
 option(KR2_FORCE_BUNDLED_UNRAR "Use third_party/unrar even if the system has libunrar" OFF)
+option(KR2_DEBUG_LINE_TABLES "Compile Kirikinux2's own code with -g1 so crash reports can be symbolized" ON)
 option(KR2_BUNDLE_FFMPEG "Copy the six linked FFmpeg shared libraries into the install tree" ON)
 set(KR2_DEFAULT_FONT "" CACHE FILEPATH "CJK font copied to Resources/DroidSansFallback.ttf (auto-detected if empty)")
 
@@ -83,6 +84,11 @@ if(KR2_PERMISSIVE)
     $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:GNU>>:-Wno-narrowing>
     $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang>>:-Wno-c++11-narrowing>)
 endif()
+if(KR2_DEBUG_LINE_TABLES)
+  # Function names + line tables only (not full -g): keeps the engine
+  # symbolizable with addr2line/gdb at a small size cost.  Cocos is unaffected.
+  list(APPEND KR2_COMMON_OPTIONS -g1)
+endif()
 # same definitions as src/core/Android.mk (LOCAL_CPPFLAGS / LOCAL_CFLAGS)
 set(KR2_COMMON_DEFINITIONS TJS_TEXT_OUT_CRLF __STDC_CONSTANT_MACROS USE_UNICODE_FSTRING _7ZIP_ST LINUX)
 
@@ -139,6 +145,21 @@ add_dependencies(krkr2plugin krkr2core)
 # live in their own archive; it is always linked --whole-archive because the
 # ncbind self-registration objects are otherwise dropped by the linker.
 file(GLOB_RECURSE KR2_PLUGIN_EXT_SOURCES CONFIGURE_DEPENDS ${KR2_ROOT}/src/plugins/ext/*.cpp)
+# layerExDraw.dll needs blend2d (fetched by scripts/linux/fetch-thirdparty.sh).
+option(KR2_WITH_BLEND2D "Build layerExDraw.dll with the bundled blend2d" ON)
+set(KR2_BLEND2D_DIR "${KR2_THIRD_PARTY}/blend2d" CACHE PATH "blend2d source tree")
+if(KR2_WITH_BLEND2D AND EXISTS "${KR2_BLEND2D_DIR}/src/blend2d.h")
+  set(BLEND2D_STATIC ON CACHE BOOL "" FORCE)
+  set(BLEND2D_NO_JIT ON CACHE BOOL "" FORCE)
+  set(BLEND2D_TEST OFF CACHE BOOL "" FORCE)
+  set(BLEND2D_DEMOS OFF CACHE BOOL "" FORCE)
+  set(BLEND2D_NO_INSTALL ON CACHE BOOL "" FORCE)
+  add_subdirectory("${KR2_BLEND2D_DIR}" "${CMAKE_BINARY_DIR}/blend2d" EXCLUDE_FROM_ALL)
+  set(KR2_HAVE_BLEND2D ON)
+else()
+  list(FILTER KR2_PLUGIN_EXT_SOURCES EXCLUDE REGEX "/layerExDraw/")
+  message(WARNING "blend2d not found: layerExDraw.dll (GdiPlus) will not be available")
+endif()
 add_library(krkr2plugin_ext STATIC ${KR2_PLUGIN_EXT_SOURCES})
 set_target_properties(krkr2plugin_ext PROPERTIES CXX_STANDARD 17 CXX_EXTENSIONS ON POSITION_INDEPENDENT_CODE ON)
 target_include_directories(krkr2plugin_ext PRIVATE
@@ -148,19 +169,23 @@ target_compile_definitions(krkr2plugin_ext PRIVATE
   $<TARGET_PROPERTY:krkr2core,INTERFACE_COMPILE_DEFINITIONS>)
 target_compile_options(krkr2plugin_ext PRIVATE ${KR2_COMMON_OPTIONS})
 add_dependencies(krkr2plugin_ext krkr2core)
+if(KR2_HAVE_BLEND2D)
+  target_link_libraries(krkr2plugin_ext PRIVATE blend2d::blend2d)
+endif()
 
 # ----------------------------------------------------------------- executable
 set(KR2_BIN_DIR "${CMAKE_BINARY_DIR}/bin")
 set(KR2_RES_DIR "${KR2_BIN_DIR}/Resources") # cocos2d-x's default resource root on Linux
 
-add_executable(kirikinux ${KR2_ROOT}/platform/linux/LinuxMain.cpp)
+add_executable(kirikinux ${KR2_ROOT}/platform/linux/LinuxMain.cpp
+  ${KR2_ROOT}/platform/linux/LinuxCrashHandler.cpp)
 add_library(kr2_legacy_libm OBJECT platform/linux/compat/legacy_libm.c)
 target_sources(kirikinux PRIVATE $<TARGET_OBJECTS:kr2_legacy_libm>)
 # Cocos 3.17's Linux prebuilt FreeType archive contains absolute relocations.
 # Ubuntu enables PIE by default; these legacy archives require a non-PIE host.
 # Keep Cocos' old static FreeType private. GTK/Pango must resolve FT_* against
 # their system shared FreeType rather than interposing the bundled copy.
-target_link_options(kirikinux PRIVATE -no-pie -Wl,--exclude-libs,libfreetype.a)
+target_link_options(kirikinux PRIVATE -no-pie -Wl,--exclude-libs,libfreetype.a -Wl,--build-id=sha1)
 set_target_properties(kirikinux PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS ON
   RUNTIME_OUTPUT_DIRECTORY "${KR2_BIN_DIR}" INSTALL_RPATH "$ORIGIN/lib")
 target_include_directories(kirikinux PRIVATE ${KR2_CORE}/environ/cocos2d)
@@ -172,6 +197,9 @@ else()
   target_link_libraries(kirikinux PRIVATE krkr2plugin -Wl,--whole-archive krkr2plugin_ext -Wl,--no-whole-archive)
 endif()
 target_link_libraries(kirikinux PRIVATE krkr2core)
+if(KR2_HAVE_BLEND2D)
+  target_link_libraries(kirikinux PRIVATE blend2d::blend2d)
+endif()
 if(NOT KR2_WRAP_MALLOC)
   target_compile_definitions(krkr2core PRIVATE KR2_NO_MALLOC_WRAP=1)
 endif()

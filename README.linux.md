@@ -34,6 +34,9 @@ APPIMAGE_EXTRACT_AND_RUN=1 APPIMAGETOOL=/absolute/path/appimagetool-x86_64.AppIm
   ./scripts/linux/package-appimage.sh
 ```
 
+`./scripts/linux/package-deb.sh` 随后用同一 AppDir 生成
+`dist/kirikinux2_<版本>_amd64.deb`（自带运行库，仅依赖主机 glibc 与 libgl1）。
+
 默认输出 `dist/kirikinux2-x86_64.AppImage`，用 `KR2_PACKAGE_DIR` 改变输出目录，
 用 `BUILD_DIR` 指定已有构建目录。重复打包时指定新的输出目录。
 包含引擎、UI、CJK 字体、光标、FFmpeg、FMOD 与自动解析的运行库；
@@ -41,6 +44,17 @@ APPIMAGE_EXTRACT_AND_RUN=1 APPIMAGETOOL=/absolute/path/appimagetool-x86_64.AppIm
 `--appimage-extract-and-run`，开发环境可设 `APPIMAGE_EXTRACT_AND_RUN=1`。
 本轮提供的 x86_64 构建要求 glibc 2.38 或更新版本，使用 Ubuntu 24.04
 依赖构建。较旧发行版请在目标环境从源码构建。
+
+## 崩溃报告
+
+引擎崩溃时会把调用栈写到终端和 `~/.local/share/kirikinux/crash.log`
+（设置 `KIRIKINUX_NO_CRASH_HANDLER=1` 可关闭，便于 gdb）。见
+[docs/psbfile-pimg-crash-fix.md](docs/psbfile-pimg-crash-fix.md)。
+
+## CI 产物
+
+全部成功时只上传 `kirikinux2-appimage` 与 `kirikinux2-deb` 两个 artifact；
+任一 job 失败、取消或超时时上传该 job 的整个工作区（`*-workspace`）。
 
 ## 验证
 

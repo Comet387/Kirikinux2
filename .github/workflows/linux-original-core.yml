@@ -5,37 +5,55 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+
+# Artifact policy
+#   * every job succeeds  -> only two artifacts: kirikinux2-appimage, kirikinux2-deb
+#   * a job fails / is cancelled / times out -> that job uploads its whole
+#     workspace (<job>-workspace) for diagnosis; nothing else is uploaded.
 jobs:
   components:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Install tools and real GTK headers for component regression
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build pkg-config libgtk-3-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build pkg-config libgtk-3-dev zlib1g-dev liblz4-dev
       - run: ./scripts/linux/check-components.sh
       - name: Compile and link GTK dialogs and original drawing components
         run: |
           cmake -S tests/linux -B build-components -G Ninja -DKR2_COMPONENT_SANITIZERS=OFF
           cmake --build build-components --parallel 2
           ctest --test-dir build-components --output-on-failure
-      - name: Upload components workspace
-        if: always()
+      - name: Headless plugin regressions (ncbind, psbfile.dll PSBFile.load / psb:// media)
+        run: |
+          cmake -S tests/plugins -B build-plugin-tests -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-plugin-tests --parallel 2 --target compat_harness psbmedia_harness psb_harness
+          ctest --test-dir build-plugin-tests --output-on-failure
+      - name: Upload whole workspace (failure only)
+        if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: original-core-components
-          path: build-components/
+          name: components-workspace
+          path: ${{ github.workspace }}
           if-no-files-found: warn
-  original-core-build:
+
+  original-core:
     runs-on: ubuntu-22.04
-    timeout-minutes: 40
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - name: Install desktop and codec development dependencies
         run: ./scripts/linux/install-deps-debian.sh
       - name: Build original core, plugins and Cocos UI resources
-        run: ./scripts/linux/build.sh -DCMAKE_BUILD_TYPE=Release
+        run: |
+          cat > "$GITHUB_WORKSPACE/blend2d-compat.h" <<'H'
+          #ifndef BL_FILE64_API
+          #define BL_FILE64_API(x) x
+          #endif
+          H
+          ./scripts/linux/build.sh -DCMAKE_BUILD_TYPE=Release
         env:
           KR2_BUILD_JOBS: 2
+          CXXFLAGS: "-include ${{ github.workspace }}/blend2d-compat.h"
       - name: Install assembled desktop tree
         run: cmake --install build-linux --prefix "$PWD/install-linux"
       - name: Package the original engine as AppImage
@@ -45,31 +63,8 @@ jobs:
           curl -fL --retry 3 https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -o packaging-tools/appimagetool.AppImage
           chmod +x packaging-tools/appimagetool.AppImage
           APPIMAGE_EXTRACT_AND_RUN=1 APPIMAGETOOL="$PWD/packaging-tools/appimagetool.AppImage" ./scripts/linux/package-appimage.sh
-
-      - name: Upload build workspace
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: original-core-build
-          path: |
-            build-linux/
-            install-linux/
-            dist/
-            packaging-tools/
-          if-no-files-found: warn
-
-  original-core-test:
-    needs: original-core-build
-    if: ${{ always() && needs.original-core-build.result == 'success' }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - name: Restore build workspace
-        uses: actions/download-artifact@v4
-        with:
-          name: original-core-build
-          path: .
+      - name: Package the same runtime as .deb
+        run: ./scripts/linux/package-deb.sh
       - name: Fetch fixed external XP3 test input
         run: |
           mkdir -p external-test
@@ -77,8 +72,6 @@ jobs:
           echo '15f008b19fbd10d08002c8419670c0d7c98d03958047f2ded9dc3f1e8c58b02b  external-test/data.xp3' | sha256sum -c -
       - name: Verify the packaged AppImage with the real XP3
         run: |
-          # GitHub artifact download normalizes regular-file modes to 0644.
-          # Restore the executable contract before gui-smoke starts the engine.
           chmod 0755 dist/kirikinux2-x86_64.AppImage
           test -x dist/kirikinux2-x86_64.AppImage
           python3 scripts/linux/gui-smoke.py --engine dist/kirikinux2-x86_64.AppImage --game external-test/data.xp3 --output appimage-gui-smoke --seconds 180 --action click:10:450:235 --action focus:150 --action key:154:space --action key:158:Return --action click:162:800:650 --require-log 'Scenario loaded : ch2004.ks' --require-log 'returned to : *ch01 line offset 11' --forbid-log 'Cannot find transition handler' --forbid-log 'Cannot find transition hander'
@@ -87,42 +80,24 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
           LIBGL_ALWAYS_SOFTWARE: "1"
           ALSOFT_DRIVERS: "null"
-      - name: Upload test workspace
-        if: always()
+      - name: Upload AppImage
+        if: ${{ success() }}
         uses: actions/upload-artifact@v4
         with:
-          name: original-core-test
-          path: |
-            appimage-gui-smoke/
-            external-test/
-          if-no-files-found: warn
-
-  original-core-upload:
-    needs: [components, original-core-build, original-core-test]
-    if: ${{ always() }}
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Record build and test results
-        if: always()
-        run: |
-          mkdir -p workspace-artifacts
-          {
-            echo "components=${{ needs.components.result }}"
-            echo "build=${{ needs.original-core-build.result }}"
-            echo "test=${{ needs.original-core-test.result }}"
-          } > workspace-artifacts/workflow-results.txt
-      - name: Collect every available workspace artifact
-        if: always()
-        uses: actions/download-artifact@v4
-        continue-on-error: true
+          name: kirikinux2-appimage
+          path: dist/kirikinux2-x86_64.AppImage
+          if-no-files-found: error
+      - name: Upload deb
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
         with:
-          pattern: original-core-*
-          path: workspace-artifacts
-          merge-multiple: true
-      - name: Upload workspace files even after failures
-        if: always()
+          name: kirikinux2-deb
+          path: dist/*.deb
+          if-no-files-found: error
+      - name: Upload whole workspace (failure only)
+        if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: original-core-workspace
-          path: workspace-artifacts/
+          path: ${{ github.workspace }}
           if-no-files-found: warn

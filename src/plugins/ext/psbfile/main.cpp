@@ -20,15 +20,30 @@
 #define LOGGER spdlog::get("plugin")
 
 using namespace PSB;
-static PSBMedia *psbMedia = nullptr;
+// Kirikinux2: the psb:// media object lives in PSBMediaRegistry.cpp.  This file
+// used to declare its own `static PSBMedia *psbMedia` that was never assigned,
+// so PSBFile.load() dereferenced a null pointer (SIGSEGV when UILoader /
+// psdlayer.tjs loaded the first .pimg).  Always go through the registry.
 
 void initPsbFile() { initPSBMedia(); }
+
+// Register resources under the storage exactly as passed and under its bare
+// file name, which is what psdlayer.tjs uses to build psb:// layer names.
+static void registerWithAliases(const ttstr &path, const PSBFile &file) {
+    std::vector<ttstr> containers{ path };
+    const ttstr bare = TVPExtractStorageName(path);
+    if(!bare.IsEmpty() && bare != path)
+        containers.push_back(bare);
+    PSB::registerRootResources(containers, file);
+}
 
 void deInitPsbFile() { deInitPSBMedia(); }
 
 static tjs_error getRoot(tTJSVariant *r, tjs_int n, tTJSVariant **p,
                          iTJSDispatch2 *obj) {
     auto *self = ncbInstanceAdaptor<PSB::PSBFile>::GetNativeInstance(obj);
+    if(self == nullptr)
+        return TJS_E_NATIVECLASSCRASH;
     iTJSDispatch2 *dic = TJSCreateCustomObject();
     auto objs = self->getObjects();
     if(objs != nullptr) {
@@ -47,25 +62,21 @@ static tjs_error load(tTJSVariant *r, tjs_int count, tTJSVariant **p,
                       iTJSDispatch2 *obj) {
     bool loadSuccess = true;
     auto *self = ncbInstanceAdaptor<PSB::PSBFile>::GetNativeInstance(obj);
+    if(self == nullptr)
+        return TJS_E_NATIVECLASSCRASH;
     if(count != 1) {
         return TJS_E_BADPARAMCOUNT;
     }
 
     if((*p)->Type() == tvtString) {
         ttstr path{ **p };
-        if(!self->loadPSBFile(path)) {
+        if(self->loadPSBFile(path)) {
+            // Expose the resources as psb://<path>/<key> (nested keys joined
+            // with '/', top-level keys exactly as before).
+            registerWithAliases(path, *self);
+        } else {
             LOGGER->info("cannot load psb file : {}", path.AsStdString());
             loadSuccess = false;
-        }
-        auto objs = self->getObjects();
-        for(const auto &[k, v] : *objs) {
-            const auto &res = std::dynamic_pointer_cast<PSBResource>(v);
-            if(res == nullptr)
-                continue;
-            ttstr pathN{ k };
-            psbMedia->NormalizeDomainName(path);
-            psbMedia->NormalizePathName(pathN);
-            psbMedia->add((path + TJS_W("/") + pathN).AsStdString(), res);
         }
     } else if((*p)->Type() == tvtOctet) {
         LOGGER->critical("PSBFile::load stream no implement!");
@@ -124,7 +135,8 @@ static tjs_error PSBFileFactory(PSBFile **result, tjs_int count,
     } else if(count == 1 && (*params)->Type() == tvtString) {
         ttstr path{ *params[0] };
         psbFile = new PSBFile();
-        psbFile->loadPSBFile(path);
+        if(psbFile->loadPSBFile(path))
+            registerWithAliases(path, *psbFile);
     } else {
         return TJS_E_INVALIDPARAM;
     }

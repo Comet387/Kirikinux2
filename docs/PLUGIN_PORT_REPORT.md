@@ -123,3 +123,36 @@ requirements must be confirmed by running the game.
 - Game scripts: `data-scripts.zip` (bytecode TJS2, UTF-16 text).
 - Real PSB samples: `001_アーサー王ver1_07_ks.scn`, `sd001.mtn`,
   `yuzulogo.mtn` (copyrighted game data — not included in the source zip).
+
+
+## 8. Checkpoint 2 (KAGParserEx, layerExDraw, compatibility plugins)
+
+- **KAGParserEx.dll**: the original source (krkrz/krkr2,
+  `kirikiri2/trunk/kirikiri2/src/plugins/win32/KAGParserEx`) is compiled
+  inside namespace `kr2_kagparserex`; linking replaces global `KAGParser`,
+  unlinking restores it. Needed by `main/scnchart.tjs`, which tests
+  `[emb escape=false]`. Only change: one `wchar_t` -> `tjs_char`.
+- **layerExDraw.dll**: KrKr2's blend2d backend. blend2d is pinned to
+  `d2027ebf` (2025-03-08, the vcpkg revision KrKr2 uses; newer blend2d
+  renamed its API to snake_case). `fetch-thirdparty.sh` downloads it
+  (sha256 checked); CMake builds it static with `BLEND2D_NO_JIT`.
+  `-DKR2_WITH_BLEND2D=OFF` or a missing tree skips layerExDraw.
+  blend2d with these options was built and a draw test passed here.
+- **getLangName.dll / layerExSave.dll / PackinOne.dll / win32ole.dll**:
+  new, written from how the game scripts call them; verified by
+  `tests/plugins/compat_harness` (6/6 checks pass).
+- **krkrsteam.dll**: KrKr2's no-op stub. Not linked by Senren\*Banka.
+- **tests/plugins/tjs_disasm**: disassembles compiled game scripts with the
+  engine's own disassembler. Use it instead of guessing from strings.
+
+Findings from disassembly:
+- `CanLoadPlugin(name)` (Initialize.tjs) is true only if the DLL exists in
+  the game archive/exe dir. process, shellExecute, clipboardEx, gamepad,
+  kztouch are not shipped, so they are never linked; no stubs needed.
+- psd.dll is linked only by `psdlayer.usePSD()`, i.e. only for `.psd`
+  files. This game uses PIMG/PSB (psbfile). psdfile was not ported.
+- AlphaMovie: optional flip type; no implementation exists anywhere.
+- Steam: `Steam.getLanguage()` is guarded by `typeof`; krkrsteam.dll is
+  never linked by this game.
+
+Still not verified: full engine build and an actual game run.

@@ -7,3 +7,11 @@ Included fixes:
 
 The third-party dependencies are intentionally omitted from this source package;
 scripts/linux/fetch-thirdparty.sh downloads them during a normal build.
+
+2026-10-07:
+- psbfile.dll: PSBFile.load() dereferenced an unassigned PSBMedia pointer
+  (SIGSEGV when psdlayer.tjs loads the first .pimg). See docs/psbfile-pimg-crash-fix.md.
+- Storage: empty names are not locally accessible (saveSystemVariables failure).
+- Linux fatal-signal reporter (crash.log), -g1 line tables, --build-id.
+- scripts/linux/package-deb.sh; CI uploads only AppImage + deb on success,
+  the whole job workspace on failure.

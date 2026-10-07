@@ -40,8 +40,19 @@ if [ ! -f "$TP/cocos2d-x/external/.kr2-deps-done" ]; then
   touch "$TP/cocos2d-x/external/.kr2-deps-done"
 fi
 
+# blend2d (Zlib licence) for layerExDraw.dll, pinned to the revision the KrKr2
+# emulator uses (vcpkg port blend2d 2025-03-08). Built statically, no JIT.
+BLEND2D_REF=d2027ebfd6aaf53b190b6b3b497425fc85f14251
+if [ "${KR2_WITH_BLEND2D:-1}" = 1 ] && [ ! -f "$TP/blend2d/src/blend2d.h" ]; then
+  fetch "https://github.com/blend2d/blend2d/archive/$BLEND2D_REF.tar.gz" "$DL/blend2d-$BLEND2D_REF.tar.gz" "70d8d801b12491d119ed285f95c4ee0d1b6dff4dd41bb846d9fb1e8dcd8412c9"
+  rm -rf "$TP/blend2d" "$TP/blend2d-$BLEND2D_REF"
+  tar --no-same-owner -xzf "$DL/blend2d-$BLEND2D_REF.tar.gz" -C "$TP"
+  mv "$TP/blend2d-$BLEND2D_REF" "$TP/blend2d"
+fi
+
 if [ ! -f "$TP/7zip/C/7z.h" ]; then
-  fetch "https://downloads.sourceforge.net/project/p7zip/p7zip/16.02/p7zip_16.02_src_all.tar.bz2" "$DL/p7zip_16.02_src_all.tar.bz2" "5eb20ac0e2944f6cb9c2d51dd6c4518941c185347d4089ea89087ffdd6e2341f"
+  fetch "https://downloads.sourceforge.net/project/p7zip/p7zip/16.02/p7zip_16.02_src_all.tar.bz2" "$DL/p7zip_16.02_src_all.tar.bz2" "5eb20ac0e2944f6cb9c2d51dd6c4518941c185347d4089ea89087ffdd6e2341f" \
+    || { rm -f "$DL/p7zip_16.02_src_all.tar.bz2.part"; fetch "https://master.dl.sourceforge.net/project/p7zip/p7zip/16.02/p7zip_16.02_src_all.tar.bz2" "$DL/p7zip_16.02_src_all.tar.bz2" "5eb20ac0e2944f6cb9c2d51dd6c4518941c185347d4089ea89087ffdd6e2341f"; }
   rm -rf "$TP/7zip" "$TP/p7zip_16.02"
   tar --no-same-owner -xjf "$DL/p7zip_16.02_src_all.tar.bz2" -C "$TP"
   mv "$TP/p7zip_16.02" "$TP/7zip"

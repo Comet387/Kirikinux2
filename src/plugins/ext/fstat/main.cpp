@@ -392,7 +392,10 @@ public:
      */
     static bool deleteFile(const tjs_char *file) {
         bool r = false;
-        if(ttstr filename(TVPGetLocallyAccessibleName(TVPGetPlacedPath(file)));
+        const ttstr placed(TVPGetPlacedPath(file));
+        if(placed.IsEmpty())
+            return false; // nothing to delete (safeSaveStruct removes "~" files)
+        if(ttstr filename(TVPGetLocallyAccessibleName(placed));
            filename.length()) {
             r = TVPDeleteFile(filename.AsNarrowStdString());
             if(!r) {
@@ -427,8 +430,11 @@ public:
      */
     static bool moveFile(const tjs_char *from, const tjs_char *to) {
         bool r = false;
-        const ttstr &fromFile(TVPGetLocallyAccessibleName(from));
-        const ttstr &toFile(TVPGetLocallyAccessibleName(to));
+        const ttstr fromName(from), toName(to);
+        if(fromName.IsEmpty() || toName.IsEmpty())
+            return false;
+        const ttstr &fromFile(TVPGetLocallyAccessibleName(fromName));
+        const ttstr &toFile(TVPGetLocallyAccessibleName(toName));
         if(fromFile.length() && toFile.length()) {
             const std::string &ff = fromFile.AsNarrowStdString();
             r = TVPCopyFile(ff, toFile.AsNarrowStdString());

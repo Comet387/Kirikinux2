@@ -587,6 +587,9 @@ void TVPGetLocalName(ttstr &name)
 //---------------------------------------------------------------------------
 ttstr TVPGetLocallyAccessibleName(const ttstr &name)
 {
+	if(name.IsEmpty()) return ttstr();
+		 // Kirikinux2: an empty name (e.g. TVPGetPlacedPath of a missing file)
+		 // is not accessible; do not throw "Not supported media type".
 	if(TJS_strchr(name.c_str(), TVPArchiveDelimiter)) return TJS_W("");
 		 // in-archive storage is always not accessible from local file system
 	return TVPStorageMediaManager.GetLocallyAccessibleName(name);

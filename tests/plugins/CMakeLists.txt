@@ -3,6 +3,7 @@
 #   ./build-plugin-tests/psb_harness sample.scn 'root.scenes.count'
 cmake_minimum_required(VERSION 3.16)
 project(kirikinux2_plugin_tests CXX)
+enable_testing()
 get_filename_component(KR2_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 set(C ${KR2_ROOT}/src/core)
 file(GLOB TJS_SOURCES ${C}/tjs2/*.cpp)
@@ -23,3 +24,25 @@ find_package(ZLIB REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LZ4 REQUIRED IMPORTED_TARGET liblz4)
 target_link_libraries(psb_harness PRIVATE harness_tjs ZLIB::ZLIB PkgConfig::LZ4 pthread)
+
+# Disassembler for compiled game scripts (analysis tool, not shipped).
+add_executable(tjs_disasm tjs_disasm.cpp)
+target_link_libraries(tjs_disasm PRIVATE harness_tjs pthread)
+
+# Small compatibility plugins through the real ncbind registration path.
+set(E ${KR2_ROOT}/src/plugins/ext/compat)
+add_executable(compat_harness compat_harness.cpp ${KR2_ROOT}/src/plugins/ncbind/ncbind.cpp
+  ${E}/getLangName.cpp ${E}/layerExSave.cpp ${E}/win32ole.cpp ${E}/PackinOne.cpp)
+set_target_properties(compat_harness PROPERTIES CXX_STANDARD 17 CXX_EXTENSIONS ON)
+target_link_libraries(compat_harness PRIVATE harness_tjs pthread)
+add_test(NAME compat-plugins COMMAND compat_harness)
+
+# psbfile.dll through ncbind: PSBFile.load() + psb:// media (null-media regression).
+add_executable(psbmedia_harness psbmedia_harness.cpp harness_memstream.cpp harness_binaccessor.cpp
+  ${KR2_ROOT}/src/plugins/ncbind/ncbind.cpp
+  ${P}/main.cpp ${P}/PSBMedia.cpp ${P}/PSBMediaRegistry.cpp
+  ${P}/PSBFile.cpp ${P}/PSBValue.cpp ${P}/PSBOffsetReader.cpp ${P}/PSBStreamDecompress.cpp ${P}/PSBLz4Stream.cpp
+  ${P}/types/PimgType.cpp ${P}/types/MotionType.cpp ${P}/types/ScnType.cpp ${P}/types/ImageType.cpp
+  ${P}/types/MmoType.cpp ${P}/types/ArchiveType.cpp ${P}/types/SoundArchiveType.cpp ${P}/resources/ImageMetadata.cpp)
+set_target_properties(psbmedia_harness PROPERTIES CXX_STANDARD 17 CXX_EXTENSIONS ON)
+target_link_libraries(psbmedia_harness PRIVATE harness_tjs ZLIB::ZLIB PkgConfig::LZ4 pthread)

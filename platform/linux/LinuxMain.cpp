@@ -13,6 +13,7 @@
 #include <vector>
 
 extern std::vector<std::string> TVPLinuxStartupArgs; // LinuxUtils.cpp, read by TVPCheckStartupArg()
+void TVPLinuxInstallCrashHandler(); // LinuxCrashHandler.cpp
 
 static void usage(const char *argv0) {
 	printf("usage: %s [--size=WIDTHxHEIGHT] [--fullscreen] [game-dir | archive.xp3 [name=value ...]]\n"
@@ -21,6 +22,7 @@ static void usage(const char *argv0) {
 }
 
 int main(int argc, char **argv) {
+	TVPLinuxInstallCrashHandler();
 	int width = 1280, height = 720;
 	bool fullscreen = false;
 	for (int i = 1; i < argc; ++i) {

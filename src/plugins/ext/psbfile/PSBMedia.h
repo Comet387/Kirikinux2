@@ -40,6 +40,7 @@ namespace PSB {
                  const std::shared_ptr<PSBResource> &resource);
 
     private:
+        const PSBResource *find(const ttstr &name) const;
         int _ref = 0;
         std::unordered_map<std::string, PSBResource> _resources;
     };
