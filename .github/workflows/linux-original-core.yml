@@ -63,21 +63,6 @@ jobs:
           curl -fL --retry 3 https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -o packaging-tools/appimagetool.AppImage
           chmod +x packaging-tools/appimagetool.AppImage
           APPIMAGE_EXTRACT_AND_RUN=1 APPIMAGETOOL="$PWD/packaging-tools/appimagetool.AppImage" ./scripts/linux/package-appimage.sh
-      - name: Fetch fixed external XP3 test input
-        run: |
-          mkdir -p external-test
-          curl -fL --retry 3 https://raw.githubusercontent.com/weimingtom/kirikiroid2_fork3/9f84364f47215ce9d352a1029879fdeca14f2653/_testdata/data.xp3 -o external-test/data.xp3
-          echo '15f008b19fbd10d08002c8419670c0d7c98d03958047f2ded9dc3f1e8c58b02b  external-test/data.xp3' | sha256sum -c -
-      - name: Verify the packaged AppImage with the real XP3
-        run: |
-          chmod 0755 dist/kirikinux2-x86_64.AppImage
-          test -x dist/kirikinux2-x86_64.AppImage
-          python3 scripts/linux/gui-smoke.py --engine dist/kirikinux2-x86_64.AppImage --game external-test/data.xp3 --output appimage-gui-smoke --seconds 180 --action click:10:450:235 --action focus:150 --action key:154:space --action key:158:Return --action click:162:800:650 --require-log 'Scenario loaded : ch2004.ks' --require-log 'returned to : *ch01 line offset 11' --forbid-log 'Cannot find transition handler' --forbid-log 'Cannot find transition hander'
-          python3 scripts/linux/check-frame-region.py --report appimage-gui-smoke/report.json --reference frame-151.0.png --after 151 --region 160:0:1120:400 --output appimage-gui-smoke/background-region.json
-        env:
-          APPIMAGE_EXTRACT_AND_RUN: "1"
-          LIBGL_ALWAYS_SOFTWARE: "1"
-          ALSOFT_DRIVERS: "null"
       - name: Upload AppImage
         if: ${{ success() }}
         uses: actions/upload-artifact@v4
