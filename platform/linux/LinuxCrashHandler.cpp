@@ -19,6 +19,7 @@
 #include <elf.h>
 #include <execinfo.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <link.h>
 #include <signal.h>
 #include <sys/mman.h>
@@ -37,6 +38,7 @@
 namespace {
 
 constexpr int kMaxFrames = 96;
+constexpr long kAddr2lineTimeoutMs = 15000;
 char g_logPath[1024];
 char g_exePath[1024];
 const unsigned char *g_exeMap = nullptr;
@@ -218,15 +220,42 @@ void runAddr2line(void *const *frames, int count) {
         ::close(pipefd[0]);
         return;
     }
+    // addr2line on the large engine binary can take minutes; a crashed player
+    // must not linger invisibly that long.  Give it a bounded time.
     char buf[4096];
-    ssize_t r;
-    while((r = ::read(pipefd[0], buf, sizeof(buf))) > 0) {
+    struct timespec start {}, now {};
+    ::clock_gettime(CLOCK_MONOTONIC, &start);
+    bool timedOut = false;
+    for(;;) {
+        ::clock_gettime(CLOCK_MONOTONIC, &now);
+        const long elapsedMs = (now.tv_sec - start.tv_sec) * 1000L + (now.tv_nsec - start.tv_nsec) / 1000000L;
+        if(elapsedMs >= kAddr2lineTimeoutMs) {
+            timedOut = true;
+            break;
+        }
+        struct pollfd pfd {pipefd[0], POLLIN, 0};
+        const int ready = ::poll(&pfd, 1, static_cast<int>(kAddr2lineTimeoutMs - elapsedMs));
+        if(ready < 0 && errno == EINTR)
+            continue;
+        if(ready <= 0) {
+            timedOut = ready == 0;
+            break;
+        }
+        const ssize_t r = ::read(pipefd[0], buf, sizeof(buf));
+        if(r < 0 && errno == EINTR)
+            continue;
+        if(r <= 0)
+            break;
         writeAll(STDERR_FILENO, buf, static_cast<size_t>(r));
         writeAll(g_logFd, buf, static_cast<size_t>(r));
     }
     ::close(pipefd[0]);
+    if(timedOut) {
+        ::kill(pid, SIGKILL);
+        out("(addr2line timed out)\n");
+    }
     int status = 0;
-    ::waitpid(pid, &status, 0);
+    while(::waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
 }
 
 void handler(int sig, siginfo_t *info, void *) {

@@ -37,8 +37,30 @@ static void _AddButtons(GtkDialog *dlg, const std::vector<std::string> &buttons)
 	gtk_dialog_set_default_response(dlg, 0);
 }
 
-int KR2LinuxMessageBox(const std::string &text, const std::string &caption, const std::vector<std::string> &buttons) {
+// Characters in the longest line (UTF-8 aware); used to give wrapped labels a
+// sensible width.
+static int _LongestLineChars(const std::string &text) {
+	int longest = 0;
+	size_t start = 0;
+	while (start <= text.size()) {
+		size_t end = text.find('\n', start);
+		if (end == std::string::npos) end = text.size();
+		const std::string line = text.substr(start, end - start);
+		longest = std::max(longest, (int)g_utf8_strlen(line.c_str(), -1));
+		start = end + 1;
+	}
+	return longest;
+}
+
+static std::string _TrimTrailingSpace(std::string text) {
+	while (!text.empty() && (text.back() == '\n' || text.back() == '\r' || text.back() == ' ' || text.back() == '\t'))
+		text.pop_back();
+	return text;
+}
+
+int KR2LinuxMessageBox(const std::string &rawText, const std::string &caption, const std::vector<std::string> &buttons) {
 	if (!_GtkReady()) return -2;
+	const std::string text = _TrimTrailingSpace(rawText);
 	GtkWidget *dlg = gtk_dialog_new();
 	gtk_window_set_title(GTK_WINDOW(dlg), caption.c_str());
 	gtk_window_set_modal(GTK_WINDOW(dlg), TRUE);
@@ -55,7 +77,15 @@ int KR2LinuxMessageBox(const std::string &text, const std::string &caption, cons
     if (!longText) {
         GtkWidget *label = gtk_label_new(text.c_str());
         gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
+        // Japanese/Chinese text has no spaces, so a wrapping label's minimum
+        // width is a single character.  GTK sizes the dialog from that minimum,
+        // which produced a one-character-wide, very tall window for short
+        // messages.  Give the label a real width and allow breaks anywhere.
+        gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_WORD_CHAR);
+        const int chars = std::min(48, std::max(16, _LongestLineChars(text)));
+        gtk_label_set_width_chars(GTK_LABEL(label), chars);
         gtk_label_set_max_width_chars(GTK_LABEL(label), 48);
+        gtk_label_set_xalign(GTK_LABEL(label), 0.0f);
         gtk_label_set_selectable(GTK_LABEL(label), TRUE);
         gtk_box_pack_start(GTK_BOX(area), label, FALSE, FALSE, 8);
     } else {

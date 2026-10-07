@@ -7,6 +7,7 @@
 #include "MsgIntf.h"
 #include <vector>
 #include "ConfigManager/IndividualConfigManager.h"
+#include "FontImpl.h"
 
 extern void TVPGetAllFontList(std::vector<ttstr>& list);
 extern const ttstr &TVPGetDefaultFontName();
@@ -30,11 +31,10 @@ void FontSystem::AddFont(const ttstr& name) {
 }
 //---------------------------------------------------------------------------
 bool FontSystem::FontExists(const ttstr &name) {
-	// check existence of font
-	InitFontNames();
-
-	int * t = TVPFontNames.Find(name);
-	return t != NULL;
+	// Ask the font registry directly. The old private copy of the name list was
+	// filled once, so fonts the game registers later with System.addFont were
+	// treated as missing and replaced by the default.
+	return TVPFindFont(name) != nullptr;
 }
 
 FontSystem::FontSystem() : FontNamesInit(false), DefaultLOGFONTCreated(false) {

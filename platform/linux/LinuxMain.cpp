@@ -14,6 +14,17 @@
 
 extern std::vector<std::string> TVPLinuxStartupArgs; // LinuxUtils.cpp, read by TVPCheckStartupArg()
 void TVPLinuxInstallCrashHandler(); // LinuxCrashHandler.cpp
+void TVPLinuxRequestClose();        // LinuxUtils.cpp: confirm / let the game decide
+void TVPLinuxQuickExit(int code);   // LinuxUtils.cpp: flush stdio, _exit()
+
+// The title bar's close button.  cocos2d-x would end its main loop, destroy the
+// window and return from main(), running static destructors while the engine
+// is still alive (SIGABRT in tTVPGraphicType::~tTVPGraphicType) and without
+// asking anything.  Keep the window open and route the request instead.
+static void onWindowCloseRequested(GLFWwindow *window) {
+	glfwSetWindowShouldClose(window, GLFW_FALSE);
+	cocos2d::Director::getInstance()->getScheduler()->performFunctionInCocosThread(TVPLinuxRequestClose);
+}
 
 static void usage(const char *argv0) {
 	printf("usage: %s [--size=WIDTHxHEIGHT] [--fullscreen] [game-dir | archive.xp3 [name=value ...]]\n"
@@ -53,5 +64,9 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 	cocos2d::Director::getInstance()->setOpenGLView(glview);
-	return cocos2d::Application::getInstance()->run();
+	if (GLFWwindow *window = static_cast<cocos2d::GLViewImpl*>(glview)->getWindow())
+		glfwSetWindowCloseCallback(window, onWindowCloseRequested);
+	const int ret = cocos2d::Application::getInstance()->run();
+	TVPLinuxQuickExit(ret); // never run static destructors (see TVPExitApplication)
+	return ret;
 }

@@ -146,6 +146,11 @@ tGenericFreeTypeFace::tGenericFreeTypeFace(const ttstr &fontname, tjs_uint32 opt
 
 		// FreeType エンジンでファイルを開こうとしてみる
 		tjs_uint index = TVP_GET_FACE_INDEX_FROM_OPTIONS(options);
+		// A name registered for one face of a collection (.ttc/.otc) must open
+		// that face, not always face 0.
+		if (index == 0) {
+			if (TVPFontNamePathInfo *info = TVPFindFont(fontname)) index = (tjs_uint)info->Index;
+		}
 		if(!OpenFaceByIndex(index, Face)) {
 			// フォントを開けなかった
 			TVPThrowExceptionMessage(TVPFontCannotBeUsed, fontname );

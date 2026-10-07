@@ -21,6 +21,7 @@
 #include "TickCount.h"
 #include "cocos2d/MainScene.h"
 #include "ConfigManager/LocaleConfigManager.h"
+#include "WindowIntf.h"
 #include "cocos2d.h"
 
 #include <algorithm>
@@ -453,13 +454,67 @@ bool TVPRenameFile(const std::string &from, const std::string &to) {
 	return rename(from.c_str(), to.c_str()) == 0;
 }
 
+// Leave without running C++ static destructors.  exit() destroys globals such
+// as TVPGraphicType in an arbitrary order while engine worker threads (sound,
+// image loading, video) are still running, which aborted with
+// "free(): invalid pointer" in tTVPGraphicType::~tTVPGraphicType and left the
+// crash handler running after the window had gone.  Everything that must
+// survive (game saves, Kirikinux2 settings, recent list) is written to disk
+// explicitly before this point, so only stdio buffers need flushing.
+void TVPLinuxQuickExit(int code) {
+	fflush(nullptr);
+	_exit(code);
+}
+
+//---------------------------------------------------------------------------
+// The window manager's close button ("X").  LinuxMain.cpp cancels GLFW's close
+// and calls this on the Cocos thread instead of letting the main loop end.
+//  - In a game it does what the in-game menu's "Exit" button does: the game's
+//    onCloseQuery runs, so KAG/KAGEX games show their own "quit?" dialog and
+//    shut down through TVPSystemUninit (same as clicking X on Windows).
+//  - In the launcher it asks "sure_to_exit" like the Back key does.
+//  - If an earlier in-game request was never picked up by the engine (script
+//    loop stuck, startup error), the player is offered a forced quit.
+//---------------------------------------------------------------------------
+tTJSNI_Window *TVPGetActiveWindow(); // MainScene.cpp
+
+static bool _ConfirmBox(const std::string &key, const char *fallback) {
+	LocaleConfigManager *loc = LocaleConfigManager::GetInstance();
+	std::string text = loc->GetText(key);
+	if (text.empty() || text == key) text = fallback;
+	return TVPShowSimpleMessageBoxYesNo(ttstr(text), ttstr("Kirikinux2")) == 0;
+}
+
+void TVPLinuxRequestClose() {
+	static bool busy = false;
+	static bool gameRequestPending = false;
+	if (busy) return;
+	busy = true;
+	struct Reset { ~Reset() { busy = false; } } reset;
+
+	if (TVPGetActiveWindow() && ::Application) {
+		if (gameRequestPending) {
+			if (_ConfirmBox("force_quit_game",
+				"The game did not respond to the close request.\nForce quit? Unsaved progress will be lost."))
+				TVPLinuxQuickExit(0);
+			return;
+		}
+		gameRequestPending = true;
+		::Application->PostUserMessage([]() {
+			gameRequestPending = false;
+			if (tTJSNI_Window *win = TVPGetActiveWindow()) win->Close();
+		});
+		return;
+	}
+	if (_ConfirmBox("sure_to_exit", "Sure to exit?"))
+		TVPExitApplication(0);
+}
+
 void TVPExitApplication(int code) {
 	TVPDeliverCompactEvent(TVP_COMPACT_LEVEL_MAX);
 	if (!TVPIsSoftwareRenderManager())
 		iTVPTexture2D::RecycleProcess();
-	fflush(stdout);
-	fflush(stderr);
-	exit(code);
+	TVPLinuxQuickExit(code);
 }
 
 // Native stat timestamp fields use the timespec members explicitly.

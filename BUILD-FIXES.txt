@@ -15,3 +15,7 @@ scripts/linux/fetch-thirdparty.sh downloads them during a normal build.
 - Linux fatal-signal reporter (crash.log), -g1 line tables, --build-id.
 - scripts/linux/package-deb.sh; CI uploads only AppImage + deb on success,
   the whole job workspace on failure.
+- GTK-backed `win32dialog.dll` compatibility for in-game font selection, with
+  a headless-safe fallback when GTK/display support is unavailable.
+- Windows-compatible localized font aliases, installed-font discovery, and
+  language-aware `.ttc` face selection; focused FontNameTable tests.

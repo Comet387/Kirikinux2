@@ -1,0 +1,42 @@
+// Font selection dialog in the style of k2compat_fontselect.tjs.
+class TestFontDialog extends WIN32GenericDialogEX {
+	var fonts = [ "Noto Sans CJK JP", "源ノ角ゴシック JP Bold", "思源黑体 CN Bold", "Source Han Serif SC" ];
+	var changes = 0, picture;
+	function TestFontDialog() {
+		super.WIN32GenericDialogEX(%[ title:"フォントの選択", width:200, itemtexts:%[ IDOK => "&OK", IDCANCEL => "キャンセル" ] ]);
+		picture = new global.WIN32Dialog.Bitmap(global.TestPixels);
+		addLText("フォントを選択してください");
+		nextLine();
+		addListSelect("Select", 100, void, void, fonts);
+		getLastItem().style |= LBS_OWNERDRAWFIXED;
+		nextLine();
+		addIcon("Sample", 20);
+		nextLine();
+		addDefPush(IDOK, makeStepRight(1, 60), 8);
+		addButton(IDCANCEL, makeStepRight(0, 60), 8);
+	}
+	function onInit() {
+		global.WIN32GenericDialogEX.onInit(...);
+		setCenterPosition();
+		setItemFocus("Select");
+		selectListBox("Select", 1);
+		setItemBitmap("Sample", picture);
+		global.sampleWidth = getItemWidth("Sample");
+	}
+	function onCommand(msg, wp, lp) {
+		if (getNamedId(wp & 0xFFFF) == "Select" && (wp >> 16) == LBN_SELCHANGE) {
+			changes++;
+			setItemBitmap("Sample", picture);
+		}
+		return global.WIN32GenericDialogEX.onCommand(...);
+	}
+}
+var dlg = new TestFontDialog();
+var r = dlg.open(null);
+if (r.result != WIN32Dialog.IDOK) throw new Exception("result " + r.result);
+if (r.items.Select != 2) throw new Exception("selected " + r.items.Select);
+if (dlg.changes < 1) throw new Exception("no LBN_SELCHANGE");
+if (global.sampleWidth <= 0) throw new Exception("item width " + global.sampleWidth);
+if (dlg.width <= 0 || dlg.height <= 0) throw new Exception("size not set");
+if (typeof global.informed != "undefined") throw new Exception("fallback notice shown");
+invalidate dlg;
