@@ -1,0 +1,47 @@
+// Font selectors built on win32dialog.tjs must open the native font picker
+// (not the Win32 template).  Shapes follow k2compat_fontselect.tjs and a
+// game's MyFontSelectDialog: fontList + initialSelect, an owner-drawn list
+// whose item height is set through LB_SETITEMHEIGHT, and
+// open() -> fontList[items.Select].
+class PickerFontDialog extends WIN32GenericDialogEX {
+	var fontList = [ "Noto Sans CJK JP", "Source Han Serif SC", "思源黑体 CN Bold" ];
+	var initialSelect = 0;
+	var iniPrompt = "フォントを選択してください";
+	function PickerFontDialog() {
+		super.WIN32GenericDialogEX(%[ title:"フォントの選択", width:200, itemtexts:%[ IDOK => "OK", IDCANCEL => "キャンセル" ] ]);
+		addLText(iniPrompt);
+		nextLine();
+		addListSelect("Select", 100, void, void, fontList);
+		addInit("Select", "setItemHeight", 30);
+		getLastItem().style |= LBS_OWNERDRAWFIXED | WS_VSCROLL;
+		nextLine();
+		addDefPush(IDOK, makeStepRight(1, 60), 8);
+		addButton(IDCANCEL, makeStepRight(0, 60), 8);
+	}
+	function setItemHeight(id, h) { sendItemMessage(id, LB_SETITEMHEIGHT, 0, h); }
+	function open(win) {
+		var r = global.WIN32GenericDialogEX.open(...);
+		if (r.result == IDOK) return fontList[r.items.Select];
+	}
+}
+function pick(initial) {
+	var d = new PickerFontDialog();
+	d.initialSelect = initial;
+	var face = d.open(null);
+	var count = d.fontList.count;
+	invalidate d;
+	return [ face, count ];
+}
+// The harness autopilot plays these in order.
+var r1 = pick(0);   // search "serif", take the row, OK
+if (r1[0] != "Source Han Serif SC") throw new Exception("list pick: " + r1[0]);
+var r2 = pick(1);   // type a name, OK
+if (r2[0] != "My Typed Font" || r2[1] != 4) throw new Exception("typed: " + r2[0] + " / " + r2[1]);
+var r3 = pick(2);   // add from file, OK
+if (r3[0] != "Picked From File") throw new Exception("file: " + r3[0]);
+var r4 = pick(0);   // cancel
+if (r4[0] !== void) throw new Exception("cancel: " + r4[0]);
+if (WIN32Dialog.LB_SETITEMHEIGHT != 0x1A0 || WIN32Dialog.ODS_SELECTED != 1) throw new Exception("constants");
+if (typeof global.informed != "undefined") throw new Exception("fallback notice shown");
+if (global.pickerInitials != "Noto Sans CJK JP|Source Han Serif SC|思源黑体 CN Bold|Noto Sans CJK JP|")
+	throw new Exception("initials: " + global.pickerInitials);

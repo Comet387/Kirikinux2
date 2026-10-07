@@ -19,3 +19,10 @@ scripts/linux/fetch-thirdparty.sh downloads them during a normal build.
   a headless-safe fallback when GTK/display support is unavailable.
 - Windows-compatible localized font aliases, installed-font discovery, and
   language-aware `.ttc` face selection; focused FontNameTable tests.
+- windowEx.dll: WindowEx left `ovbmp` (and other members) uninitialised;
+  closing the window deleted a garbage pointer (SIGABRT, free(): invalid
+  pointer).
+- Native GTK font picker (system faces / font file / typed name) for
+  Font.doUserSelect, win32dialog-based game font selectors and
+  Preferences -> Default Font; added font files are remembered.
+  See docs/font-picker-and-close-crash-fix.md.

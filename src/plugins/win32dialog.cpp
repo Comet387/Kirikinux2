@@ -18,6 +18,11 @@
 #include "../../platform/linux/LinuxWin32Dialog.h"
 #include <exception>
 
+// Native font picker (src/core/visual/FontPicker.cpp).  Weak so the plugin
+// test harnesses, which link no engine core, still build.
+int TVPShowFontPicker(const ttstr &caption, const ttstr &prompt, const ttstr &sample,
+	const ttstr &initial, bool rememberFiles, ttstr &face, ttstr *file) __attribute__((weak));
+
 #define NCB_MODULE_NAME TJS_W("win32dialog.dll")
 
 namespace {
@@ -231,6 +236,21 @@ tjs_error TJS_INTF_METHOD nativeSetImage(tTJSVariant *result, tjs_int n, tTJSVar
 	return TJS_S_OK;
 }
 
+// pickFont(caption, prompt, sample, initial) -> face name, void when
+// cancelled, -1 when the native font picker is unavailable.
+tjs_error TJS_INTF_METHOD nativePickFont(tTJSVariant *result, tjs_int n, tTJSVariant **p, iTJSDispatch2 *) {
+	auto arg = [&](int i) -> ttstr { return (n > i && p[i]->Type() != tvtVoid) ? ttstr(*p[i]) : ttstr(); };
+	if (!TVPShowFontPicker) { if (result) *result = (tjs_int)-1; return TJS_S_OK; }
+	ttstr face;
+	const int r = TVPShowFontPicker(arg(0), arg(1), arg(2), arg(3), true, face, nullptr);
+	if (result) {
+		if (r == 1) *result = face;
+		else if (r == 0) result->Clear();
+		else *result = (tjs_int)-1;
+	}
+	return TJS_S_OK;
+}
+
 void addMethod(iTJSDispatch2 *obj, const tjs_char *name, tTJSNativeClassMethodCallback fn) {
 	iTJSDispatch2 *m = TJSCreateNativeClassMethod(fn);
 	tTJSVariant v(m, m);
@@ -256,6 +276,7 @@ static void InitPlugin_WIN32Dialog()
 		addMethod(native, TJS_W("setFocus"), nativeSetFocus);
 		addMethod(native, TJS_W("setImage"), nativeSetImage);
 		addMethod(native, TJS_W("getRect"), nativeGetRect);
+		addMethod(native, TJS_W("pickFont"), nativePickFont);
 		tTJSVariant v(native, native);
 		native->Release();
 		global->PropSet(TJS_MEMBERENSURE, TJS_W("KR2Win32DialogNative"), nullptr, &v, global);
@@ -302,8 +323,49 @@ class WIN32Dialog
 	property _native { getter { return typeof global.KR2Win32DialogNative != "undefined" ? global.KR2Win32DialogNative : void; } }
 	property _running { getter { var n = _native; return n !== void && n.active(); } }
 
+	// Font selectors built on win32dialog.tjs (k2compat_fontselect.tjs's
+	// FontSelectDialog, games' own MyFontSelectDialog ...) keep the face names
+	// in "fontList" and return fontList[items.Select].  They are shown with the
+	// player's native font picker instead (installed faces, a font file, or a
+	// typed name); the owner-drawn Win32 list box is not reproduced.
+	function _isFontSelector() {
+		return typeof this.fontList == "Object" && this.fontList instanceof "Array"
+			&& typeof this.initialSelect != "undefined";
+	}
+	function _openFontSelector() {
+		var n = _native;
+		if (n === void || typeof n.pickFont == "undefined") return void;
+		var list = this.fontList;
+		var initial = "";
+		try {
+			var sel = +this.initialSelect;
+			if (sel >= 0 && sel < list.count) initial = "" + list[sel];
+		} catch (e) {}
+		var caption = "", prompt = "", sample = "";
+		try { if (_template !== void && typeof _template.title == "String") caption = _template.title; } catch (e) {}
+		try { if (typeof this.iniPrompt == "String") prompt = this.iniPrompt; } catch (e) {}
+		try { if (prompt == "" && typeof this.prompt == "String") prompt = this.prompt; } catch (e) {}
+		try { if (typeof this.sampleText == "String") sample = this.sampleText; } catch (e) {}
+		var face = n.pickFont(caption, prompt, sample, initial);
+		if (face === -1) return void;           // no native picker: fall back to the template
+		var results = %[];
+		if (face === void || face == "") {
+			try { this.itemResults = results; } catch (e) {}
+			return IDCANCEL;
+		}
+		var idx = list.find(face);
+		if (idx < 0) { list.add(face); idx = list.count - 1; }
+		results.Select = idx;
+		try { this.itemResults = results; } catch (e) {}
+		return IDOK;
+	}
+
 	// Rendered with GTK by the player (platform/linux/LinuxWin32Dialog.cpp).
 	function open(win) {
+		if (_isFontSelector()) {
+			var fr = _openFontSelector();
+			if (fr !== void) return fr;
+		}
 		var n = _native;
 		if (n !== void && _template !== void) {
 			var r = n.run(this, _template);
@@ -433,6 +495,11 @@ class WIN32Dialog
 	var LB_ADDSTRING = 0x180, LB_INSERTSTRING = 0x181, LB_DELETESTRING = 0x182, LB_RESETCONTENT = 0x184, LB_SETSEL = 0x185, LB_SETCURSEL = 0x186;
 	var LB_GETSEL = 0x187, LB_GETCURSEL = 0x188, LB_GETTEXT = 0x189, LB_GETTEXTLEN = 0x18A, LB_GETCOUNT = 0x18B, LB_SELECTSTRING = 0x18C;
 	var LB_GETTOPINDEX = 0x18E, LB_FINDSTRING = 0x18F, LB_GETSELCOUNT = 0x190, LB_GETSELITEMS = 0x191, LB_SETTOPINDEX = 0x197, LB_FINDSTRINGEXACT = 0x1A2;
+	var LB_GETITEMDATA = 0x199, LB_SETITEMDATA = 0x19A, LB_SETITEMHEIGHT = 0x1A0, LB_GETITEMHEIGHT = 0x1A1;
+	var ODT_MENU = 1, ODT_LISTBOX = 2, ODT_COMBOBOX = 3, ODT_BUTTON = 4, ODT_STATIC = 5;
+	var ODA_DRAWENTIRE = 1, ODA_SELECT = 2, ODA_FOCUS = 4;
+	var ODS_SELECTED = 0x1, ODS_GRAYED = 0x2, ODS_DISABLED = 0x4, ODS_CHECKED = 0x8, ODS_FOCUS = 0x10, ODS_DEFAULT = 0x20, ODS_COMBOBOXEDIT = 0x1000;
+	var WM_DRAWITEM = 0x2B, WM_MEASUREITEM = 0x2C;
 	var LBN_ERRSPACE = -2, LBN_SELCHANGE = 1, LBN_DBLCLK = 2, LBN_SELCANCEL = 3, LBN_SETFOCUS = 4, LBN_KILLFOCUS = 5;
 
 	var CBS_SIMPLE = 0x1, CBS_DROPDOWN = 0x2, CBS_DROPDOWNLIST = 0x3, CBS_OWNERDRAWFIXED = 0x10, CBS_AUTOHSCROLL = 0x40, CBS_OEMCONVERT = 0x80;
@@ -503,7 +570,10 @@ class WIN32Dialog
 		"LBS_NOSEL", "LBS_STANDARD", "LB_ADDSTRING", "LB_INSERTSTRING", "LB_DELETESTRING", "LB_RESETCONTENT",
 		"LB_SETSEL", "LB_SETCURSEL", "LB_GETSEL", "LB_GETCURSEL", "LB_GETTEXT", "LB_GETTEXTLEN", "LB_GETCOUNT",
 		"LB_SELECTSTRING", "LB_GETTOPINDEX", "LB_FINDSTRING", "LB_GETSELCOUNT", "LB_GETSELITEMS", "LB_SETTOPINDEX",
-		"LB_FINDSTRINGEXACT", "LBN_ERRSPACE", "LBN_SELCHANGE", "LBN_DBLCLK", "LBN_SELCANCEL", "LBN_SETFOCUS",
+		"LB_FINDSTRINGEXACT", "LB_GETITEMDATA", "LB_SETITEMDATA", "LB_SETITEMHEIGHT", "LB_GETITEMHEIGHT",
+		"ODT_MENU", "ODT_LISTBOX", "ODT_COMBOBOX", "ODT_BUTTON", "ODT_STATIC", "ODA_DRAWENTIRE", "ODA_SELECT",
+		"ODA_FOCUS", "ODS_SELECTED", "ODS_GRAYED", "ODS_DISABLED", "ODS_CHECKED", "ODS_FOCUS", "ODS_DEFAULT",
+		"ODS_COMBOBOXEDIT", "WM_DRAWITEM", "WM_MEASUREITEM", "LBN_ERRSPACE", "LBN_SELCHANGE", "LBN_DBLCLK", "LBN_SELCANCEL", "LBN_SETFOCUS",
 		"LBN_KILLFOCUS", "CBS_SIMPLE", "CBS_DROPDOWN", "CBS_DROPDOWNLIST", "CBS_OWNERDRAWFIXED", "CBS_AUTOHSCROLL",
 		"CBS_OEMCONVERT", "CBS_SORT", "CBS_HASSTRINGS", "CBS_NOINTEGRALHEIGHT", "CBS_DISABLENOSCROLL",
 		"CB_GETEDITSEL", "CB_LIMITTEXT", "CB_SETEDITSEL", "CB_ADDSTRING", "CB_DELETESTRING", "CB_GETCOUNT",

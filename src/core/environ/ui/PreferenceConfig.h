@@ -125,6 +125,24 @@ public:
 	}
 };
 
+class tTVPPreferenceInfoSelectFont : public tTVPPreferenceInfo<std::string> {
+public:
+	tTVPPreferenceInfoSelectFont(const std::string &cap, const std::string &key, const std::string &defval)
+		: tTVPPreferenceInfo<std::string>(cap, key, defval) {}
+
+	virtual iPreferenceItem *createItem(int idx) override {
+		LocaleConfigManager *locmgr = LocaleConfigManager::GetInstance();
+		const std::string caption = locmgr->GetText(Caption);
+		return CreatePreferenceItem<tPreferenceItemFileSelect>(idx, PrefListSize, caption,
+			[this, caption](tPreferenceItemFileSelect* item) {
+			item->useFontPicker = true;
+			item->pickerCaption = caption;
+			item->_getter = std::bind(&PreferenceGetValueString, Key, DefaultValue);
+			item->_setter = std::bind(&PreferenceSetValueString, Key, std::placeholders::_1);
+		});
+	}
+};
+
 class tTVPPreferenceInfoRendererSubPref : public iTVPPreferenceInfo {
 public:
 	tTVPPreferenceInfoRendererSubPref(const std::string &cap) { Caption = cap; } // Key is useless
@@ -265,7 +283,7 @@ static void initAllConfig() {
 			{ "preference_software", "software" }
 		}),
 		new tTVPPreferenceInfoRendererSubPref("preference_renderer_opt"),
-		new tTVPPreferenceInfoSelectFile("preference_default_font", "default_font", ""),
+		new tTVPPreferenceInfoSelectFont("preference_default_font", "default_font", ""),
 		new tTVPPreferenceInfoCheckBox("preference_force_def_font", "force_default_font", false),
 #ifdef CC_TARGET_OS_IPHONE
 		new tTVPPreferenceInfoSelectList("preference_mem_limit", "memusage", "high", {

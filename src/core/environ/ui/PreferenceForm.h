@@ -173,6 +173,12 @@ protected:
 };
 
 class tPreferenceItemFileSelect : public tPreferenceItem<std::string> {
+public:
+	// Default Font: use the native font picker (installed face, font file or a
+	// typed name) instead of the file browser when the platform has one.
+	bool useFontPicker = false;
+	std::string pickerCaption;
+
 protected:
 	virtual void initController(const NodeMap &allNodes) override;
 	virtual const char* getUIFileName() const override;

@@ -20,11 +20,18 @@ static bool _GtkReady() {
 	static int state = -1;
 	if (state < 0) {
 		if (!_UIFont.empty()) FcConfigAppFontAddFile(nullptr, reinterpret_cast<const FcChar8*>(_UIFont.c_str()));
-		gtk_disable_setlocale(); // TJS2 and the engine rely on the "C" numeric locale
-		state = gtk_init_check(nullptr, nullptr) ? 1 : 0;
+		if (gdk_display_get_default()) {
+			state = 1; // already started elsewhere (win32dialog.dll)
+		} else {
+			gtk_disable_setlocale(); // TJS2 and the engine rely on the "C" numeric locale
+			state = gtk_init_check(nullptr, nullptr) ? 1 : 0;
+		}
 	}
 	return state == 1;
 }
+
+// Shared GTK start-up for the other native dialogs (font picker).
+bool KR2LinuxGtkInit() { return _GtkReady(); }
 
 static void _GtkFlush() {
 	while (gtk_events_pending()) gtk_main_iteration();
@@ -190,6 +197,7 @@ std::string KR2LinuxSelectGame(const std::string &initialPath, const std::vector
 #else // !KR2_LINUX_HAVE_GTK3
 
 void KR2LinuxSetUIFont(const std::string &) {}
+bool KR2LinuxGtkInit() { return false; }
 
 int KR2LinuxMessageBox(const std::string &, const std::string &, const std::vector<std::string> &) { return -2; }
 int KR2LinuxInputBox(std::string &, const std::string &, const std::string &, const std::vector<std::string> &) { return -2; }

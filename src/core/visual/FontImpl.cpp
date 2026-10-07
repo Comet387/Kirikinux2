@@ -157,6 +157,29 @@ int TVPEnumFontsProc(const ttstr &FontPath)
 	return TVPInternalEnumFonts(&buf.front(), bufflen, FontPath, nullptr);
 }
 
+// Registers every face of a font file and reports their display names (the
+// font picker's "add from file").  Returns the number of faces registered.
+int TVPEnumFontsProcCollect(const ttstr &FontPath, std::vector<ttstr> &faces)
+{
+	TVPInitFontNames();
+	std::vector<TVPEnumeratedFace> collected;
+	std::vector<TVPEnumeratedFace> *saved = TVPEnumCollector;
+	TVPEnumCollector = &collected;
+	int n = 0;
+	try {
+		n = TVPEnumFontsProc(FontPath);
+	} catch (...) {
+		TVPEnumCollector = saved;
+		throw;
+	}
+	TVPEnumCollector = saved;
+	for (const TVPEnumeratedFace &f : collected) {
+		if (std::find(faces.begin(), faces.end(), f.Display) == faces.end())
+			faces.push_back(f.Display);
+	}
+	return n;
+}
+
 tTJSBinaryStream* TVPCreateFontStream(const ttstr &fontname)
 {
 	TVPFontNamePathInfo *info = TVPFindFont(fontname);
@@ -257,6 +280,13 @@ static void TVPEnumSystemFonts() {
 #endif
 }
 
+bool TVPIsFontFilePathSetting(const ttstr &value)
+{
+	const tjs_char *p = value.c_str();
+	for (; *p; ++p) if (*p == TJS_W('/') || *p == TJS_W('\\')) return true;
+	return false;
+}
+
 void TVPInitFontNames()
 {
     static bool TVPFontNamesInit = false;
@@ -270,10 +300,16 @@ void TVPInitFontNames()
 	// a matching alias through TVPRegisterFontName.
 	TVPEnumSystemFonts();
 	std::vector<TVPEnumeratedFace> defaultFaces;
+	ttstr userFaceSetting;
 	TVPEnumCollector = &defaultFaces;
 	do {
+		// "default_font" is a font file path, or (font picker) a face name.
 		ttstr userFont = IndividualConfigManager::GetInstance()->GetValue<std::string>("default_font", "");
-		if (!userFont.IsEmpty() && TVPEnumFontsProc(userFont)) break;
+		if (!userFont.IsEmpty() && TVPIsFontFilePathSetting(userFont)) {
+			if (TVPEnumFontsProc(userFont)) break;
+		} else if (!userFont.IsEmpty()) {
+			userFaceSetting = userFont;
+		}
 
 		if (TVPEnumFontsProc(TVPGetAppPath() + "default.ttf")) break;
 		if (TVPEnumFontsProc(TVPGetAppPath() + "default.ttc")) break;
@@ -333,6 +369,31 @@ void TVPInitFontNames()
             TVPEnumFontsProc(*it);
         }
     }
+
+	// Font files added with the in-game font picker (kept across runs).
+	{
+		std::string files = IndividualConfigManager::GetInstance()->GetValue<std::string>("user_font_files", "");
+		size_t start = 0;
+		while (start < files.size()) {
+			size_t end = files.find('\n', start);
+			if (end == std::string::npos) end = files.size();
+			const std::string one = files.substr(start, end - start);
+			if (!one.empty()) {
+				try { TVPEnumFontsProc(ttstr(one)); } catch (...) {}
+			}
+			start = end + 1;
+		}
+	}
+
+	// A face chosen by name in Preferences -> Default Font.
+	if (!userFaceSetting.IsEmpty()) {
+		if (TVPFontNamePathInfo *info = TVPFindFont(userFaceSetting)) {
+			(void)info;
+			TVPDefaultFontName = userFaceSetting;
+		} else {
+			TVPAddLog(ttstr(TJS_W("Kirikinux2: default font face not found: ")) + userFaceSetting);
+		}
+	}
 
 	if (TVPDefaultFontName.IsEmpty() && !TVPFontDisplayNames.empty())
 		TVPDefaultFontName = TVPFontDisplayNames.front();

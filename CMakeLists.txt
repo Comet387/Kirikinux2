@@ -116,7 +116,8 @@ if(KR2_GTK3_FOUND)
   # libstdc++ headers. <cstdlib>'s #include_next then cannot find stdlib.h.
   set_source_files_properties(
     ${KR2_ROOT}/platform/linux/LinuxDialogs.cpp
-    ${KR2_ROOT}/platform/linux/LinuxWin32Dialog.cpp PROPERTIES
+    ${KR2_ROOT}/platform/linux/LinuxWin32Dialog.cpp
+    ${KR2_ROOT}/platform/linux/LinuxFontPicker.cpp PROPERTIES
     COMPILE_DEFINITIONS KR2_LINUX_HAVE_GTK3=1)
   # Font.getList / face lookup include fonts installed on the system.
   set_property(SOURCE ${KR2_CORE}/visual/FontImpl.cpp APPEND PROPERTY

@@ -64,6 +64,7 @@ set(KR2_PLATFORM_SOURCES
   ${KR2_ROOT}/platform/linux/LinuxUtils.cpp
   ${KR2_ROOT}/platform/linux/LinuxDialogs.cpp
   ${KR2_ROOT}/platform/linux/LinuxWin32Dialog.cpp
+  ${KR2_ROOT}/platform/linux/LinuxFontPicker.cpp
   ${KR2_ROOT}/platform/linux/LinuxFeatureStubs.cpp
   ${KR2_ROOT}/platform/linux/LinuxNoNeonStubs.c)
 

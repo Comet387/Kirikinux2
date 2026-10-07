@@ -5,6 +5,10 @@
 
 void TVPInitFontNames();
 int TVPEnumFontsProc(const ttstr &FontPath);
+#include <vector>
+int TVPEnumFontsProcCollect(const ttstr &FontPath, std::vector<ttstr> &faces);
+bool TVPIsFontFilePathSetting(const ttstr &value);
+void TVPGetAllFontList(std::vector<ttstr>& list);
 const ttstr &TVPGetDefaultFontName();
 tTJSBinaryStream* TVPCreateFontStream(const ttstr &fontname);
 struct TVPFontNamePathInfo {

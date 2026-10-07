@@ -446,7 +446,14 @@ void dialogBaseUnits(GtkWidget *window, int pointSize, double &bx, double &by) {
 
 bool gtkReady() {
 	static int state = -1;
-	if (state < 0) state = gtk_init_check(nullptr, nullptr) ? 1 : 0;
+	if (state < 0) {
+		if (gdk_display_get_default()) state = 1; // already started by LinuxDialogs.cpp
+		else {
+			// Keep the "C" numeric locale: TJS2 parses and prints numbers with it.
+			gtk_disable_setlocale();
+			state = gtk_init_check(nullptr, nullptr) ? 1 : 0;
+		}
+	}
 	return state == 1;
 }
 

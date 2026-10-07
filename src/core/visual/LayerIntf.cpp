@@ -21,6 +21,7 @@
 
 #include "tjsArray.h"
 #include "LayerIntf.h"
+#include "FontPicker.h"
 #include "MsgIntf.h"
 #include "LayerBitmapIntf.h"
 #include "LayerTreeOwner.h"
@@ -11065,13 +11066,15 @@ TJS_BEGIN_NATIVE_METHOD_DECL(/*func. name*/doUserSelect)
 	ttstr prompt = *param[2];
 	ttstr samplestring = *param[3];
 
-	tjs_int ret = // TODO: implement it ?
-#if 0
-		(tjs_int)_this->GetLayer()->DoUserFontSelect(flags, caption,
-		prompt, samplestring);
-#else
-		0;
-#endif
+	// Native font picker (system faces, font file, or a typed name).  The
+	// chosen face becomes this font's face, as with Windows' font dialog.
+	(void)flags;
+	ttstr face;
+	tjs_int ret = 0;
+	if (TVPShowFontPicker(caption, prompt, samplestring, _this->GetFontFace(), true, face) == 1 && !face.IsEmpty()) {
+		_this->SetFontFace(face);
+		ret = 1;
+	}
 
 	if(result) *result = ret;
 

@@ -711,8 +711,12 @@ struct WindowEx {
     // ネイティブインスタンスの生成・破棄にあわせてレシーバを登録・解除する
     WindowEx(iTJSDispatch2 *obj) :
         self(obj), menuex(0), sysMenuModified(0), sysMenuModMap(0),
+        cachedHWND(0), sysMenu(0), externalIcon(0),
+        hasResizing(false), hasMoving(false), hasMove(false), hasNcMsMove(false),
         disableResize(false), disableMove(false), enableNCMEvent(false),
-        enableWinMsgHook(false) {
+        enableWinMsgHook(false), bitHooks(), ovbmp(nullptr) {
+        // ovbmp used to be left uninitialised: closing the window ran
+        // deleteOverlayBitmap() on a garbage pointer (free(): invalid pointer).
         regist(true);
         setMessageHookAll(false);
     }

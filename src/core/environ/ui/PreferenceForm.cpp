@@ -1,4 +1,6 @@
 #include "PreferenceForm.h"
+#include "FontPicker.h"
+#include "FontImpl.h"
 #include "ui/UIText.h"
 #include "ui/UIHelper.h"
 #include "ui/UICheckBox.h"
@@ -437,6 +439,19 @@ void tPreferenceItemFileSelect::onPressStateChangedToPressed()
 void tPreferenceItemFileSelect::showForm(cocos2d::Ref*)
 {
 	std::string fullname = _getter();
+	if (useFontPicker) {
+		ttstr face;
+		ttstr initial = TVPIsFontFilePathSetting(ttstr(fullname)) ? ttstr() : ttstr(fullname);
+		const int r = TVPShowFontPicker(ttstr(pickerCaption), ttstr(), ttstr(), initial, true, face);
+		if (r == 1) {
+			// A face name; font files added in the picker are loaded at start-up.
+			_setter(face.AsStdString());
+			updateHightlight();
+			return;
+		}
+		if (r == 0) return; // cancelled
+		// r == -1: no native picker, use the file browser below
+	}
 	std::string initname, initdir;
 	if (!fullname.empty()) {
 		std::pair<std::string, std::string> path = TVPBaseFileSelectorForm::PathSplit(fullname);

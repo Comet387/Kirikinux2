@@ -51,6 +51,16 @@ if(KR2_PLUGIN_GTK3_FOUND)
   target_compile_definitions(win32dialog_gui PRIVATE KR2_LINUX_HAVE_GTK3=1)
   target_include_directories(win32dialog_gui PRIVATE ${KR2_ROOT}/src/plugins ${KR2_ROOT}/src/plugins/ncbind)
   target_link_libraries(win32dialog_gui PRIVATE harness_tjs PkgConfig::KR2_PLUGIN_GTK3 pthread)
+
+  # Font selectors (fontList + initialSelect) go to the native font picker.
+  pkg_check_modules(KR2_PLUGIN_FONTCONFIG QUIET IMPORTED_TARGET fontconfig)
+  add_executable(font_picker_gui font_picker_gui.cpp ${KR2_ROOT}/src/plugins/ncbind/ncbind.cpp
+    ${KR2_ROOT}/src/plugins/win32dialog.cpp ${KR2_ROOT}/platform/linux/LinuxWin32Dialog.cpp
+    ${KR2_ROOT}/platform/linux/LinuxFontPicker.cpp)
+  set_target_properties(font_picker_gui PROPERTIES CXX_STANDARD 17 CXX_EXTENSIONS ON)
+  target_compile_definitions(font_picker_gui PRIVATE KR2_LINUX_HAVE_GTK3=1)
+  target_include_directories(font_picker_gui PRIVATE ${KR2_ROOT}/src/plugins ${KR2_ROOT}/src/plugins/ncbind)
+  target_link_libraries(font_picker_gui PRIVATE harness_tjs PkgConfig::KR2_PLUGIN_GTK3 PkgConfig::KR2_PLUGIN_FONTCONFIG pthread)
 endif()
 
 # psbfile.dll through ncbind: PSBFile.load() + psb:// media (null-media regression).
