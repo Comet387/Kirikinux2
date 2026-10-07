@@ -17,3 +17,5 @@ tests/linux/games/**/initialize-bytecode.tjs
 tests/linux/games/startup-compat-fallback/System/[Ii]nitialize.tjs
 tests/linux/games/**/savedata/
 /third_party/p7zip_16.02/
+
+.uuid
