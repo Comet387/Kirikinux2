@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 #include <sys/stat.h>
 #include "Platform.h"
 #include "tjsCommHead.h"

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Exercise the production bootstrap/entry policy with the original TJS VM.
+// Exercise the production bootstrap/entry policy with the engine's TJS VM.
 #include "StartupCompatibility.h"
 #include "tjsError.h"
 #include <algorithm>

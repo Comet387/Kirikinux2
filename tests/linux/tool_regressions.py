@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-only
 """Resource-tool failure policy (serializer double), and patch rejection checks.
 The serializer double verifies exit codes, not Cocos CSB serialization itself.
 """

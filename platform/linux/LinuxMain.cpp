@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //---------------------------------------------------------------------------
 // kirikinux2 : process entry for Linux (Android: project/android/jni/src/
 // SDL_android_main.cpp, win32: the cocos2d-x win32 main).  Everything after
@@ -28,7 +29,7 @@ static void onWindowCloseRequested(GLFWwindow *window) {
 
 static void usage(const char *argv0) {
 	printf("usage: %s [--size=WIDTHxHEIGHT] [--fullscreen] [game-dir | archive.xp3 [name=value ...]]\n"
-	       "  without a game the original Kirikinux2 file selector is shown\n"
+	       "  without a game the Kirikinux2 file selector is shown\n"
 	       "  KIRIKINUX_GAME_DIR sets the folder the file selector starts in\n", argv0);
 }
 

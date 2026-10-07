@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-only
 # Build dependencies on Debian/Ubuntu (tested package names: Ubuntu 22.04).
 set -euo pipefail
 privilege=()

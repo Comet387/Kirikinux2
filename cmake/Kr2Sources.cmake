@@ -1,4 +1,5 @@
-# Source lists of the ORIGINAL engine, mirroring src/core/Android.mk and
+# SPDX-License-Identifier: AGPL-3.0-only
+# Engine source lists, mirroring src/core/Android.mk and
 # src/plugins/Android.mk.  The only differences from the Android build are
 # listed in KR2_CORE_LINUX_EXCLUDES and KR2_PLATFORM_SOURCES.
 set(KR2_CORE "${KR2_ROOT}/src/core")

@@ -1,2 +1,0 @@
-if (!Storages.isExistentStorage("system/initialize.tjs"))
-    throw "fallback storage lookup failed";

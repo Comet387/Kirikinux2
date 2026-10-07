@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 cmake_minimum_required(VERSION 3.16)
 project(kirikinux2_components LANGUAGES C CXX)
 get_filename_component(KR2_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
@@ -8,7 +9,7 @@ set(KR2_WITH_JXR OFF)
 include("${KR2_ROOT}/cmake/Kr2Sources.cmake")
 foreach(required visual/WindowIntf.cpp visual/LayerIntf.cpp environ/cocos2d/MainScene.cpp environ/cocos2d/AppDelegate.cpp environ/ConfigManager/GlobalConfigManager.cpp)
   if(NOT "${KR2_ROOT}/src/core/${required}" IN_LIST KR2_CORE_SOURCES)
-    message(FATAL_ERROR "Original engine source missing from main target: ${required}")
+    message(FATAL_ERROR "Engine source missing from main target: ${required}")
   endif()
 endforeach()
 foreach(source IN LISTS KR2_CORE_SOURCES KR2_PLUGIN_SOURCES KR2_PLATFORM_SOURCES)
@@ -28,8 +29,8 @@ target_compile_features(tvpgl_components PRIVATE cxx_std_14)
 target_include_directories(tvpgl_components PRIVATE "${KR2_ROOT}/src/core/tjs2" "${KR2_ROOT}/src/core/visual" "${KR2_ROOT}/src/core/visual/gl" "${KR2_ROOT}/platform/linux/compat")
 add_library(linux_platform_fallbacks OBJECT "${KR2_ROOT}/platform/linux/LinuxDialogs.cpp" "${KR2_ROOT}/platform/linux/LinuxNoNeonStubs.c")
 target_compile_features(linux_platform_fallbacks PRIVATE cxx_std_14)
-# Compile and link the real GTK branch as well as the no-GTK fallback. Previous
-# component checks covered only the fallback and missed GTK include ordering.
+# Compile and link the real GTK branch as well as the no-GTK fallback, so GTK
+# include-ordering problems are caught here.
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
   pkg_check_modules(KR2_COMPONENT_GTK3 QUIET IMPORTED_TARGET gtk+-3.0)
@@ -49,7 +50,7 @@ else()
 endif()
 enable_testing()
 add_test(NAME portable-container-and-allocator COMMAND port_components)
-add_test(NAME original-tvpgl-265-entrypoints COMMAND tvpgl_components)
+add_test(NAME tvpgl-265-entrypoints COMMAND tvpgl_components)
 if(TARGET gtk_dialog_components)
   add_test(NAME gtk-dialog-headless-fallback COMMAND gtk_dialog_components)
   set_tests_properties(gtk-dialog-headless-fallback PROPERTIES ENVIRONMENT "DISPLAY=;WAYLAND_DISPLAY=;GDK_BACKEND=x11")

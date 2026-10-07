@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-only
 """Re-create, on a stock cocos2d-x 3.17.2 tree, the API differences of the
 privately modified cocos2d-x zeas2 built kirikinux with (that vendor tree was
 never published).  Every change only widens an API, nothing stock code relies on

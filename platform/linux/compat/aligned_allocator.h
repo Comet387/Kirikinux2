@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 #ifndef __ALIGNED_ALLOCATOR_H__
 #define __ALIGNED_ALLOCATOR_H__
 // kirikinux2: missing from the public Kirikiroid2 tree (visual/gl/ResampleImage.cpp).

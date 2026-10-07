@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //---------------------------------------------------------------------------
 // kirikinux2 : features whose sources/dependencies are not in the public tree.
 // Same set Yuri's port leaves out (XP3 repack, BPG, JPEG XR); here they are

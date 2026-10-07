@@ -166,7 +166,7 @@ def gui():
     import threading, queue
     window = tk.Tk(); window.title('Kirikinux2 · XP3 提取工具'); window.geometry('640x370')
     tk.Label(window, text='提取脚本，方便诊断启动错误', font=('', 16)).pack(pady=14)
-    tk.Label(window, text='脚本模式跳过图片、声音和视频，生成可直接发送的 ZIP。\n保留 TJS 字节码；原 XP3 不会被修改。\n校验异常可保留诊断字节；游戏专用加密仍需对应补丁。', justify='left').pack(padx=20)
+    tk.Label(window, text='脚本模式跳过图片、声音和视频，生成的 ZIP 可直接附在问题反馈中。\n保留 TJS 字节码；原 XP3 不会被修改。\n校验异常可保留诊断字节；游戏专用加密仍需对应补丁。', justify='left').pack(padx=20)
     status = tk.StringVar(value='选择本地 XP3 文件即可开始。'); tk.Label(window,textvariable=status,wraplength=540).pack(pady=12)
     retain=tk.BooleanVar(value=True)
     tk.Checkbutton(window,text='保留校验不一致的诊断字节（放入 unverified/，不代表已解密）',variable=retain).pack()

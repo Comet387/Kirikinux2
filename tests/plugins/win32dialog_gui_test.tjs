@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 // Font selection dialog in the style of k2compat_fontselect.tjs.
 class TestFontDialog extends WIN32GenericDialogEX {
 	var fonts = [ "Noto Sans CJK JP", "源ノ角ゴシック JP Bold", "思源黑体 CN Bold", "Source Han Serif SC" ];

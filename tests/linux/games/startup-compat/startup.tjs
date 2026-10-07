@@ -1,6 +1,6 @@
 if (kirikiriz != false) throw "Unexpected krkrz API flag";
 // SPDX-License-Identifier: AGPL-3.0-only
-// Reproduce the global read seen at VM ip 265 in the uploaded initialize.tjs.
+// Reproduce a compiled initialize.tjs that reads debugWindowEnabled before any game script sets it.
 if (debugWindowEnabled != false) throw "Unexpected debugger default";
 debugWindowEnabled = true;
 if (!debugWindowEnabled) throw "Debugger flag must remain writable";

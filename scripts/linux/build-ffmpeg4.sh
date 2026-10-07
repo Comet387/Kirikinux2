@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-only
 # The Kodi-derived video code (src/core/movie/ffmpeg) needs the FFmpeg 4.x API.
 # Distributions newer than Ubuntu 22.04 / Debian 11 ship FFmpeg >= 5; this builds
 # a private shared FFmpeg 4.4 into third_party/install/ffmpeg4 (build.sh uses it).

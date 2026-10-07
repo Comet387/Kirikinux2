@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
 /*
  * kirikinux2: src/core/visual/ARM and src/core/sound/ARM are the Android NEON
  * module (krkr2_neon_opt in project/android/jni/Android.mk).  They include the

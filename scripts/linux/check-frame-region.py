@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-only
 """Compare an unchanged screen region across real gui-smoke RGB captures.
 
 This reader accepts the exact PNG format emitted by gui-smoke.py (RGB8, filter

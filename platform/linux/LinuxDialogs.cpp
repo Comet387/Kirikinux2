@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //---------------------------------------------------------------------------
 // kirikinux2 : native message/input boxes for TVPShowSimpleMessageBox /
 // TVPShowSimpleInputBox (Android uses AlertDialogs through JNI).

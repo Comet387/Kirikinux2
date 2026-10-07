@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copies the published UI files of the original release (Cocos Studio .csb files,
 # fallback font, cursor, locale) out of Kirikiroid2_1.3.9.apk into the build tree.
 # Use this if the build-time .csd -> .csb conversion (kr2_csd2csb) misbehaves.

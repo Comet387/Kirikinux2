@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Launch the original engine on Xvfb, capture real X11 frames and inject input.
+# SPDX-License-Identifier: AGPL-3.0-only
+"""Launch the engine on Xvfb, capture real X11 frames and inject input.
 
 Requires Xvfb, libX11 and libXtst. No game resources are created or substituted.
 Example: gui-smoke.py --engine build-linux/bin/kirikinux2 --game /path/data.xp3

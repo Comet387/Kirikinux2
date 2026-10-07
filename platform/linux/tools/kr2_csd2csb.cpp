@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 //---------------------------------------------------------------------------
 // kirikinux2 : publishes cocos/kr2/cocosstudio/**/*.csd to .csb with the
 // cocos2d-x serializer Cocos Studio itself uses (FlatBuffersSerialize).  The

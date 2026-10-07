@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
 #pragma once
 /* kirikinux2: src/core/movie/ffmpeg is derived from Kodi 17 and written for the
    FFmpeg 3.x API of zeas2's FFmpeg fork.  FFmpeg 4.x still has every deprecated

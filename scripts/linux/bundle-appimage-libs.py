@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Copy the installed original engine's shared-library closure into its AppDir."""
+# SPDX-License-Identifier: AGPL-3.0-only
+"""Copy the installed engine's shared-library closure into its AppDir."""
 import argparse
 import hashlib
 import json
@@ -31,7 +32,7 @@ def main():
     libdir = runtime / "lib"
     libdir.mkdir(exist_ok=True)
     if not engine.is_file():
-        raise SystemExit("original engine is missing")
+        raise SystemExit("installed engine is missing")
     queued = [engine] + list(libdir.glob("*.so*"))
     seen = set()
     manifest = {}

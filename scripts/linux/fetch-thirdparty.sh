@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-only
 # Fetches what the public Kirikiroid2 tree does not contain (see docs/linux-port.md):
 #   - cocos2d-x 3.17.2 + its prebuilt external/ libraries (what download-deps.py does)
 #   - p7zip 16.02 (LZMA SDK C code for "7zip/C/7z.h"), with the older 7z API

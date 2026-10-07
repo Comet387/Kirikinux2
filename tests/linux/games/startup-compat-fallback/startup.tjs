@@ -1,4 +1,0 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-// Produce the same compiled-initializer fallback shape as the uploaded game.
-Scripts.compileStorage("initialize-source.tjs", "System/Initialize.tjs");
-throw "KIRIKINUX_REGRESSION_INTENTIONAL_STARTUP_FALLBACK";

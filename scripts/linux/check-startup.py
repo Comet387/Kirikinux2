@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: AGPL-3.0-only
-"""Build only the original TJS VM and run the production startup regression."""
+"""Build only the TJS VM and run the startup regression."""
 from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
@@ -10,7 +10,7 @@ root = Path(__file__).resolve().parents[2]
 compiler = os.environ.get('CXX', 'c++')
 sources = sorted((root / 'src/core/tjs2').glob('*.cpp'))
 sources = [p for p in sources if p.name != 'tjsRegExp.cpp']
-sources += [root / 'linux/tjs_platform.cpp', root / 'tests/linux/startup_context.cpp']
+sources += [root / 'tests/support/tjs_platform.cpp', root / 'tests/linux/startup_context.cpp']
 flags = ['-std=c++17', '-O0', '-w', '-pthread', '-D__STDC_CONSTANT_MACROS',
          '-DUSE_UNICODE_FSTRING', '-DTJS_NO_REGEXP=1', '-DTJS_TEXT_OUT_CRLF=1']
 for folder in ['src/core/tjs2', 'src/core/utils', 'src/core/environ', 'src/core/base']:

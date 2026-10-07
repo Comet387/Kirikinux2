@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Package only the root CMake ORIGINAL engine. No diagnostic-host target is used.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Package the engine built by the root CMake project as an AppImage.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BUILD="${BUILD_DIR:-$ROOT/build-linux}"
@@ -11,7 +12,7 @@ for tool in cmake python3 patchelf ldd; do
 done
 [ "$(uname -m)" = x86_64 ] || { echo 'this package targets x86_64' >&2; exit 1; }
 [ -f "$BUILD/libkrkr2core.a" ] && [ -f "$BUILD/libkrkr2plugin.a" ] || {
-  echo 'build the original core and plugins with scripts/linux/build.sh first' >&2; exit 1;
+  echo 'build the engine and plugins with scripts/linux/build.sh first' >&2; exit 1;
 }
 [ ! -e "$APPDIR" ] || { echo "AppDir already exists: $APPDIR (choose a new KR2_PACKAGE_DIR)" >&2; exit 1; }
 mkdir -p "$OUT"
@@ -21,7 +22,7 @@ from pathlib import Path
 import sys
 items = list(Path(sys.argv[1]).glob('usr/lib*/**/kirikinux/kirikinux'))
 if len(items) != 1:
-    raise SystemExit('expected exactly one installed original engine')
+    raise SystemExit('expected exactly one installed engine')
 print(items[0].parent.resolve())
 PY
 )"
@@ -31,7 +32,7 @@ PY
 [ -f "$runtime/Resources/res/ui/MainFileSelector.csb" ] || { echo 'compiled Cocos UI missing' >&2; exit 1; }
 python3 "$ROOT/scripts/linux/bundle-appimage-libs.py" "$runtime"
 cp "$ROOT/platform/linux/kirikinux.desktop" "$APPDIR/kirikinux2.desktop"
-cp "$ROOT/icons/kirikinux-linux.png" "$APPDIR/kirikinux2.png"
+cp "$ROOT/icons/kirikinux2.png" "$APPDIR/kirikinux2.png"
 ln -s kirikinux2.png "$APPDIR/.DirIcon"
 cat > "$APPDIR/AppRun" <<'EOF'
 #!/bin/sh
@@ -42,9 +43,9 @@ chmod +x "$APPDIR/AppRun"
 mkdir -p "$APPDIR/usr/share/doc/kirikinux2"
 cp "$ROOT/LICENSE" "$APPDIR/usr/share/doc/kirikinux2/LICENSE"
 cp "$ROOT/LICENSE-AGPL-3.0" "$ROOT/LICENSING.md" "$ROOT/README.md" "$APPDIR/usr/share/doc/kirikinux2/"
-cp "$ROOT/README.linux.md" "$APPDIR/usr/share/doc/kirikinux2/README.linux.md"
+cp "$ROOT/platform/linux/compat/VORBIS-COPYING" "$APPDIR/usr/share/doc/kirikinux2/VORBIS-COPYING"
 mkdir -p "$APPDIR/usr/share/doc/kirikinux2/docs"
-cp "$ROOT/docs/ui-desktop-fixes.md" "$APPDIR/usr/share/doc/kirikinux2/docs/"
+cp "$ROOT"/docs/*.md "$APPDIR/usr/share/doc/kirikinux2/docs/"
 mkdir -p "$APPDIR/usr/share/doc/kirikinux2/tools"
 cp "$ROOT"/tools/xp3-* "$ROOT/tools/README.md" "$APPDIR/usr/share/doc/kirikinux2/tools/"
 for dir in "$ROOT/third_party/cocos2d-x" "$ROOT/third_party/unrar" "$ROOT/third_party/7zip" "$ROOT/third_party/ffmpeg-4.4.5-git"; do

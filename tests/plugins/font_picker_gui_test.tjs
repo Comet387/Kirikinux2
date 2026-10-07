@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 // Font selectors built on win32dialog.tjs must open the native font picker
 // (not the Win32 template).  Shapes follow k2compat_fontselect.tjs and a
 // game's MyFontSelectDialog: fontList + initialSelect, an owner-drawn list

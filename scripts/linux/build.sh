@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-only
 # One-shot Linux build:  scripts/linux/build.sh [extra cmake args]
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BUILD="${BUILD_DIR:-$ROOT/build-linux}"
 for tool in cmake pkg-config python3 git curl tar unzip make sha256sum; do
-  command -v "$tool" >/dev/null 2>&1 || { echo "missing build tool: $tool (see README.linux.md)" >&2; exit 1; }
+  command -v "$tool" >/dev/null 2>&1 || { echo "missing build tool: $tool (see docs/building.md)" >&2; exit 1; }
 done
 "$ROOT/scripts/linux/fetch-thirdparty.sh"
 

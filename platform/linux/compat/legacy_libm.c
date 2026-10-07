@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
 /* Cocos 3.17's prebuilt Chipmunk archive was compiled with -ffast-math against
  * glibc's former unversioned finite-math entry points. Modern glibc removed
  * those entry points. Delegate to the public functions with the same ABI.

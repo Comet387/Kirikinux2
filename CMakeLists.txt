@@ -1,4 +1,5 @@
-# Kirikinux2 - Linux desktop build of the ORIGINAL Kirikiroid2 engine.
+# SPDX-License-Identifier: AGPL-3.0-only
+# Kirikinux2 - Linux desktop build of the Kirikiroid2 engine.
 #
 # src/core and src/plugins are compiled the way src/core/Android.mk and
 # src/plugins/Android.mk compile them; only the platform layer differs:
@@ -282,7 +283,7 @@ if(KR2_BUNDLE_FFMPEG)
 endif()
 install(DIRECTORY "${KR2_RES_DIR}" DESTINATION "${KR2_INSTALL_DIR}")
 install(FILES platform/linux/kirikinux.desktop DESTINATION "${CMAKE_INSTALL_DATADIR}/applications" RENAME kirikinux2.desktop)
-install(FILES icons/kirikinux-linux.png DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps" RENAME kirikinux2.png)
+install(FILES icons/kirikinux2.png DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps" RENAME kirikinux2.png)
 file(RELATIVE_PATH KR2_REL_RUNTIME "/${CMAKE_INSTALL_BINDIR}" "/${KR2_INSTALL_DIR}")
 configure_file(platform/linux/kirikinux-launcher.in "${CMAKE_BINARY_DIR}/kirikinux-launcher" @ONLY)
 install(PROGRAMS "${CMAKE_BINARY_DIR}/kirikinux-launcher" DESTINATION "${CMAKE_INSTALL_BINDIR}" RENAME kirikinux)

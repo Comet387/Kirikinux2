@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 # Third-party libraries of src/core/Android.mk, taken from the distribution
 # where possible.  Not in distributions / not in the public tree:
 #   cocos2d-x 3.17.2, p7zip (7z C API), unrar  -> scripts/linux/fetch-thirdparty.sh

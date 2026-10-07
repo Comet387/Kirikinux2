@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 # Archive codec targets, independent of Cocos/OpenGL for component verification.
 find_package(Threads REQUIRED)
 # 7z C API (base/7zArchive.cpp, base/UtilStreams.cpp include "7zip/C/7z.h").

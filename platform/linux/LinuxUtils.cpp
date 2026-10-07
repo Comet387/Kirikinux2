@@ -1,5 +1,5 @@
 //---------------------------------------------------------------------------
-// kirikinux2 : Linux desktop host for the ORIGINAL Kirikiroid2 core.
+// kirikinux2 : Linux desktop host for the Kirikiroid2 core.
 //
 // Linux counterpart of src/core/environ/android/AndroidUtils.cpp.  It defines
 // the same set of symbols AndroidUtils.cpp exports on Android, so src/core and
