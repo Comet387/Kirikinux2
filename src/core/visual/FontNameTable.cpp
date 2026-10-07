@@ -139,8 +139,11 @@ KR2FontFaceNames KR2CollectFontFaceNames(FT_Face face, const std::vector<int> &p
 	for (FT_UInt i = 0; i < count; ++i) {
 		FT_SfntName name;
 		if (FT_Get_Sfnt_Name(face, i, &name)) continue;
-		if (name.name_id != TT_NAME_ID_FONT_FAMILY && name.name_id != TT_NAME_ID_FULL_NAME &&
-		    name.name_id != TT_NAME_ID_TYPOGRAPHIC_FAMILY)
+		if (name.name_id != TT_NAME_ID_FONT_FAMILY && name.name_id != TT_NAME_ID_FULL_NAME
+#ifdef TT_NAME_ID_TYPOGRAPHIC_FAMILY
+		    && name.name_id != TT_NAME_ID_TYPOGRAPHIC_FAMILY
+#endif
+		    )
 			continue;
 		std::u16string text;
 		int lang;
