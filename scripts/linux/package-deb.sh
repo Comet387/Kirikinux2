@@ -89,6 +89,6 @@ rm -f "$deb"
 dpkg-deb --root-owner-group -Zxz --build "$stage" "$deb"
 rm -rf "$stage"
 dpkg-deb --info "$deb" >/dev/null
-dpkg-deb --contents "$deb" | grep -q './usr/bin/kirikinux2$' || { echo 'deb lacks /usr/bin/kirikinux2' >&2; exit 1; }
+dpkg-deb --contents "$deb" | grep './usr/bin/kirikinux2$' >/dev/null || { echo 'deb lacks /usr/bin/kirikinux2' >&2; exit 1; }
 (cd "$OUT" && sha256sum "$(basename "$deb")" >> SHA256SUMS)
 printf 'deb: %s\n' "$deb"
