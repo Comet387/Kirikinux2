@@ -51,6 +51,22 @@ stage="$OUT/deb-root"
 rm -rf "$stage"
 mkdir -p "$stage/DEBIAN"
 cp -a "$APPDIR/usr" "$stage/usr"
+# Also accept AppDirs produced before distribution notices were namespaced.
+# Move only the staging copy, preserving the caller's AppDir and all notices.
+python3 - "$stage/usr/share/doc" <<'PY'
+from pathlib import Path
+import shutil, sys
+docs = Path(sys.argv[1])
+if docs.is_dir():
+    for entry in list(docs.iterdir()):
+        if entry.name == 'kirikinux2':
+            continue
+        dest = docs / 'kirikinux2/distro' / entry.name
+        if dest.exists() or dest.is_symlink():
+            raise SystemExit(f'conflicting distribution notices: {entry} and {dest}')
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(entry), str(dest))
+PY
 # The AppDir layout is the install layout: /usr/bin/kirikinux2 launcher ->
 # /usr/lib*/kirikinux/kirikinux with its private lib/ directory.
 [ -x "$stage/usr/bin/kirikinux2" ] || { echo 'launcher usr/bin/kirikinux2 missing in AppDir' >&2; exit 1; }

@@ -19,6 +19,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build pkg-config libgtk-3-dev zlib1g-dev liblz4-dev
       - name: Component checks
         run: ./scripts/linux/check-components.sh
+      - name: Packaging regressions (copyright ownership, isolated dpkg unpack)
+        run: python3 tests/linux/packaging_regressions.py
       - name: Component tests (GTK dialogs, TVPGL, containers)
         run: |
           cmake -S tests/linux -B build-components -G Ninja -DKR2_COMPONENT_SANITIZERS=OFF

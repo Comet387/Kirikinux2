@@ -63,7 +63,7 @@ Kirikinux2 由三部分代码组成：从 Kirikiroid2 等上游项目继承的�
 
 ## 构建时下载的依赖
 
-以下依赖不在仓库中，由 `scripts/linux/fetch-thirdparty.sh` 和 `build-ffmpeg4.sh` 在构建时下载，各自遵循原有许可。打包脚本会把它们的许可文件和发行版的版权声明一并放进安装包的 `usr/share/doc/` 中。
+以下依赖不在仓库中，由 `scripts/linux/fetch-thirdparty.sh` 和 `build-ffmpeg4.sh` 在构建时下载，各自遵循原有许可。打包脚本会把它们的许可文件放进安装包的 `usr/share/doc/kirikinux2/` 中，发行版的版权声明则保存在其 `distro/<包名>/copyright` 下，避免与系统软件包的文档路径冲突。
 
 | 依赖 | 许可 |
 | --- | --- |

@@ -82,7 +82,24 @@ APPIMAGE_EXTRACT_AND_RUN=1 APPIMAGETOOL=/absolute/path/appimagetool-x86_64.AppIm
 
 它会复用同一个 AppDir，生成 `dist/kirikinux2_<版本>_amd64.deb`。安装包自带运行库，只依赖主机的 glibc 和 `libgl1`。可以用 `KR2_DEB_VERSION` 和 `KR2_DEB_MAINTAINER` 覆盖版本号和维护者信息。
 
+发行版的版权声明保存在 `usr/share/doc/kirikinux2/distro/<包名>/copyright`，不会占用系统软件包的文档路径。`package-deb.sh` 也会在打包暂存目录中迁移旧 AppDir 的版权声明，保留原 AppDir 不变。需要修复已有发布包时，可以解包后重新打包，无须重新编译引擎：
+
+```sh
+mkdir -p repaired-release/kirikinux2.AppDir
+dpkg-deb -x kirikinux2_1.3.9_amd64.deb repaired-release/kirikinux2.AppDir
+KR2_PACKAGE_DIR="$PWD/repaired-release" KR2_DEB_VERSION=1.3.9-1 \
+  ./scripts/linux/package-deb.sh
+```
+
+请发布新生成的 `.deb`；不要使用 `--force-overwrite` 绕过文件归属冲突。
+
 ## 测试
+
+打包回归测试不需要构建引擎，会检查版权声明的位置，并在临时根目录中用 dpkg 解包，验证已安装的系统包文件不会被覆盖：
+
+```sh
+python3 tests/linux/packaging_regressions.py
+```
 
 不需要完整构建引擎的组件测试：
 

@@ -54,23 +54,9 @@ for dir in "$ROOT/third_party/cocos2d-x" "$ROOT/third_party/unrar" "$ROOT/third_
   mkdir -p "$dest"
   find "$dir" -maxdepth 1 -type f \( -iname '*license*' -o -iname '*copying*' \) -exec cp -t "$dest" {} +
 done
-# Retain distribution notices for both ordinary and private-sysroot builds.
-python3 - "${KR2_SYSROOT:-/}" "$APPDIR" <<'PY'
-from pathlib import Path
-import shutil, sys
-root = Path(sys.argv[1])
-for notice in Path(root, 'usr/share/doc').glob('*/copyright'):
-    source = notice
-    if notice.is_symlink() and not notice.exists():
-        linked = Path(notice.readlink())
-        if linked.is_absolute():
-            source = root / str(linked).lstrip('/')
-    if not source.is_file():
-        continue
-    dest = Path(sys.argv[2], 'usr/share/doc', notice.parent.name, 'copyright')
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source, dest)
-PY
+# Keep distribution notices inside our namespace: the same usr/ tree is also
+# installed by the .deb and must not claim files owned by other packages.
+python3 "$ROOT/scripts/linux/copy-distro-notices.py" "${KR2_SYSROOT:-/}" "$APPDIR"
 env -u LD_LIBRARY_PATH "$APPDIR/AppRun" --help > "$OUT/engine-help.txt"
 grep -q -- '--size=WIDTHxHEIGHT' "$OUT/engine-help.txt"
 args=(--no-appstream --mksquashfs-opt -processors --mksquashfs-opt "${KR2_PACKAGE_JOBS:-2}")
