@@ -1,4 +1,7 @@
 #include <climits>
+#include <vector>
+#include <cstring>
+#include <zlib.h>   // KR2_MDF_SUPPORT
 #include <cassert>
 #include <cstdint>
 #include <memory>
@@ -536,6 +539,46 @@ namespace PSB {
         if(!rawStream) {
             return false;
         }
+
+        /* KR2_MDF_FIX2: MDF = "mdf\0" + u32 uncompressed_size + zlib(PSB) */
+        {
+            const tjs_uint64 fsz = rawStream->GetSize();
+            if(fsz > 8) {
+                unsigned char sig[4] = {};
+                rawStream->SetPosition(0);
+                rawStream->ReadBuffer(sig, 4);
+                if(sig[0] == 'm' && sig[1] == 'd' && sig[2] == 'f' && sig[3] == 0) {
+                    unsigned char szb[4] = {};
+                    rawStream->ReadBuffer(szb, 4);
+                    const std::uint32_t orig =
+                        static_cast<std::uint32_t>(szb[0]) |
+                        (static_cast<std::uint32_t>(szb[1]) << 8) |
+                        (static_cast<std::uint32_t>(szb[2]) << 16) |
+                        (static_cast<std::uint32_t>(szb[3]) << 24);
+                    if(orig > 0 && orig <= (64u << 20)) {
+                        std::vector<std::uint8_t> comp(static_cast<size_t>(fsz - 8));
+                        rawStream->ReadBuffer(comp.data(), comp.size());
+                        std::vector<std::uint8_t> out(orig);
+                        uLongf outLen = orig;
+                        if(uncompress(out.data(), &outLen, comp.data(),
+                                      static_cast<uLong>(comp.size())) == Z_OK) {
+                            auto *mem = new tTVPMemoryStream(
+                                nullptr, static_cast<tjs_uint>(outLen));
+                            std::memcpy(mem->GetInternalBuffer(), out.data(),
+                                        static_cast<size_t>(outLen));
+                            delete rawStream;
+                            rawStream = mem;
+                            LOGGER->info("MDF decompressed: {} -> {} bytes", fsz,
+                                         outLen);
+                        } else {
+                            LOGGER->error("MDF decompression failed (orig={})", orig);
+                        }
+                    }
+                }
+                rawStream->SetPosition(0);
+            }
+        }
+
 
         try {
             _stream = openDecompressedStream(rawStream);
