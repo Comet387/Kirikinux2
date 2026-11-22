@@ -10,10 +10,16 @@ import re
 import shutil
 import subprocess
 
-# Use the host's glibc and graphics driver stack. Shipping a particular Mesa or
-# GLVND build would prevent the same AppImage from using the user's GPU driver.
+# Use the host's glibc, C++ runtime and graphics driver stack. Shipping a
+# particular Mesa or GLVND build would prevent the same AppImage from using the
+# user's GPU driver; the same holds for libstdc++/libgcc_s, because GLVND
+# (libGLX/libGLdispatch) is C++ and links against the system libstdc++. Bundling
+# an older libstdc++ shadows the system one, the GLX vendor initialisation then
+# fails silently (glXQueryExtensionsString/glXGetClientString return NULL) and
+# the engine crashes on newer distributions (Debian 13 / Mesa 25 / GLVND 1.7).
 HOST_LIBS = re.compile(
-    r"^(?:ld-linux.*|lib(?:c|m|pthread|dl|rt|resolv|util|anl|nss_.*)\.so.*|"
+    r"^(?:ld-linux.*|lib(?:c|m|pthread|dl|rt|resolv|util|anl|nss_.*|"
+    r"stdc\+\+|gcc_s)\.so.*|"
     r"lib(?:GL|GLX|GLX_.*|GLdispatch|EGL|GLESv[12]|gbm|drm|drm_.*)\.so.*)$"
 )
 
